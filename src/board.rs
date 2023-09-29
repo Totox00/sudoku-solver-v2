@@ -1,6 +1,6 @@
 use std::borrow::BorrowMut;
 
-use crate::defaults::{default_cell, default_region_bounds, default_regions};
+use crate::defaults::{default_cell, default_regions};
 
 #[derive(Debug, Clone)]
 pub struct Board {
@@ -99,109 +99,5 @@ impl Board {
             }
         }
         Ok(())
-    }
-
-    pub fn to_string(self) -> String {
-        let (rwidth, rheight) = default_region_bounds(self.size);
-        let mut out = String::new();
-        out.push('╔');
-        for i in 0..rheight {
-            if i > 0 {
-                out.push('╦');
-            }
-            for j in 0..rwidth {
-                if j > 0 {
-                    out.push('╤');
-                }
-                out.push_str("═".repeat(rwidth).as_str());
-            }
-        }
-        out.push('╗');
-
-        for region_row in 0..rwidth {
-            if region_row > 0 {
-                out.push_str("\n╠");
-                for i in 0..rheight {
-                    if i > 0 {
-                        out.push('╬');
-                    }
-                    for j in 0..rwidth {
-                        if j > 0 {
-                            out.push('╪');
-                        }
-                        out.push_str("═".repeat(rwidth).as_str());
-                    }
-                }
-                out.push('╣');
-            }
-            for cell_row in 0..rheight {
-                if cell_row > 0 {
-                    out.push_str("\n╟");
-                    for i in 0..rheight {
-                        if i > 0 {
-                            out.push('╫');
-                        }
-                        for j in 0..rwidth {
-                            if j > 0 {
-                                out.push('┼');
-                            }
-                            out.push_str("─".repeat(rwidth).as_str());
-                        }
-                    }
-                    out.push('╢');
-                }
-                for digit_row in 0..rheight {
-                    out.push_str("\n║");
-                    for region_col in 0..rheight {
-                        if region_col > 0 {
-                            out.push('║');
-                        }
-                        for cell_col in 0..rwidth {
-                            if cell_col > 0 {
-                                out.push('│');
-                            }
-                            for digit_col in 1..=rwidth {
-                                out.push(
-                                    if self
-                                        .get_cell_coords(
-                                            cell_row + region_row * rheight,
-                                            cell_col + region_col * rwidth,
-                                        )
-                                        .unwrap()
-                                        & 1 << digit_col + digit_row * rwidth
-                                        > 0
-                                    {
-                                        char::from_digit(
-                                            (digit_col + digit_row * rwidth) as u32,
-                                            10,
-                                        )
-                                        .unwrap_or(' ')
-                                    } else {
-                                        ' '
-                                    },
-                                )
-                            }
-                        }
-                    }
-                    out.push('║')
-                }
-            }
-        }
-
-        out.push_str("\n╚");
-        for i in 0..rheight {
-            if i > 0 {
-                out.push('╩');
-            }
-            for j in 0..rwidth {
-                if j > 0 {
-                    out.push('╧');
-                }
-                out.push_str("═".repeat(rwidth).as_str());
-            }
-        }
-        out.push('╝');
-
-        out
     }
 }
