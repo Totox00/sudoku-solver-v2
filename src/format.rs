@@ -64,19 +64,20 @@ pub fn format(board: &Board) -> Option<String> {
                                 if board.get_cell_coords(
                                     cell_row + region_row * rheight,
                                     cell_col + region_col * rwidth,
-                                )? & 1 << digit_col + digit_row * rwidth
+                                )? & 1 << (digit_col + digit_row * rwidth)
                                     > 0
                                 {
+                                    #[allow(clippy::cast_possible_truncation)]
                                     char::from_digit((digit_col + digit_row * rwidth) as u32, 10)
                                         .unwrap_or(' ')
                                 } else {
                                     ' '
                                 },
-                            )
+                            );
                         }
                     }
                 }
-                out.push('║')
+                out.push('║');
             }
         }
     }

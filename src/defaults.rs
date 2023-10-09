@@ -2,9 +2,9 @@ use crate::board::{Cell, Region};
 
 pub const fn default_cell(size: usize) -> u16 {
     match size {
-        4 => 0b1111_0,
-        6 => 0b11_1111_0,
-        9 => 0b1_1111_1111_0,
+        4 => 0b1_1110,
+        6 => 0b111_1110,
+        9 => 0b11_1111_1110,
         _ => panic!("Default cell with specified size does not exist"),
     }
 }

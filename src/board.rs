@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-
 use crate::defaults::{default_cell, default_regions};
 
 #[derive(Debug, Clone)]
@@ -16,10 +14,10 @@ pub struct Cell {
 }
 
 pub type Region = Vec<Cell>;
-type Anyhow<T = ()> = Result<T, ()>;
+type Anyhow<T = ()> = Option<T>;
 
 impl Board {
-    pub fn _new_custom_regions(size: usize, regions: Vec<Region>) -> Self {
+    pub fn new_custom_regions(size: usize, regions: Vec<Region>) -> Self {
         Board {
             size,
             regions,
@@ -51,53 +49,62 @@ impl Board {
         self.cells.get_mut(row)?.get_mut(col)
     }
 
-    pub fn place_digit(&mut self, val: u16, cell: Cell) -> Anyhow {
+    pub fn place_digit(&mut self, val: u16, cell: Cell) {
         *self.get_mut_cell(&cell).unwrap() = 1 << val;
 
-        self.clean_col(cell.col, &[cell.row], val)?;
-        self.clean_row(cell.row, &[cell.col], val)?;
-        self.clean_reg(cell, &[cell], val)?;
-
-        Ok(())
+        self.clean_col(cell.col, &[cell.row], val);
+        self.clean_row(cell.row, &[cell.col], val);
+        self.clean_reg(cell, &[cell], val);
     }
 
-    pub fn clean_row(&mut self, row: usize, ignore: &[usize], val: u16) -> Anyhow {
+    pub fn clean_row(&mut self, row: usize, ignore: &[usize], val: u16) {
         for i in 0..self.size {
             if ignore.contains(&i) {
                 continue;
-            } else if self.get_cell_coords(row, i).unwrap() == 1 << val {
-                return Err(());
             }
-            *self.get_mut_cell_coords(row, i).unwrap() &= !(1 << val);
+            self.clean_cell(Cell { row, col: i }, val);
         }
-        Ok(())
     }
 
-    pub fn clean_col(&mut self, col: usize, ignore: &[usize], val: u16) -> Anyhow {
+    pub fn clean_col(&mut self, col: usize, ignore: &[usize], val: u16) {
         for i in 0..self.size {
             if ignore.contains(&i) {
                 continue;
-            } else if self.get_cell_coords(i, col).unwrap() == 1 << val {
-                return Err(());
             }
-            *self.get_mut_cell_coords(i, col).unwrap() &= !(1 << val);
+            self.clean_cell(Cell { row: i, col }, val);
         }
-        Ok(())
     }
 
-    pub fn clean_reg(&mut self, cell: Cell, ignore: &[Cell], val: u16) -> Anyhow {
-        let cells: &mut Vec<Vec<u16>> = self.cells.borrow_mut();
-        for region in self.regions.iter().filter(|reg| reg.contains(&cell)) {
+    pub fn clean_reg(&mut self, cell: Cell, ignore: &[Cell], val: u16) {
+        for region in self
+            .regions
+            .clone()
+            .iter()
+            .filter(|reg| reg.contains(&cell))
+        {
             for cell in region {
-                if ignore.contains(&cell) {
+                if ignore.contains(cell) {
                     continue;
-                } else if *cells.get(cell.row).unwrap().get(cell.col).unwrap() == 1 << val {
-                    return Err(());
-                } else {
-                    *cells.get_mut(cell.row).unwrap().get_mut(cell.col).unwrap() &= !(1 << val);
                 }
+                self.clean_cell(*cell, val);
             }
         }
-        Ok(())
+    }
+
+    pub fn clean_cell(&mut self, cell: Cell, val: u16) -> Anyhow {
+        let mut last_val = None;
+        let cell_val = self.get_mut_cell(&cell)?;
+        assert!(*cell_val != 1 << val, "Cell has no possibilities");
+        if *cell_val & (1 << val) > 0 {
+            *cell_val &= !(1 << val);
+            #[allow(clippy::cast_possible_truncation)]
+            if cell_val.count_ones() == 1 {
+                last_val = Some(cell_val.trailing_zeros() as u16);
+            }
+        }
+        if let Some(new_val) = last_val {
+            self.place_digit(new_val, cell);
+        }
+        Some(())
     }
 }
