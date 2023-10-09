@@ -17,6 +17,16 @@ pub type Region = Vec<Cell>;
 type Anyhow<T = ()> = Option<T>;
 
 impl Board {
+    pub fn solve(&mut self) {
+        // Hidden singles
+        let size = self.size;
+        for cell in (0..size).flat_map(|row| (0..size).map(move |col| Cell { row, col })) {
+            if self.place_if_hidden_single(cell).is_some() {
+                return self.solve();
+            }
+        }
+    }
+
     pub fn new_custom_regions(size: usize, regions: Vec<Region>) -> Self {
         Board {
             size,
@@ -76,17 +86,16 @@ impl Board {
     }
 
     pub fn clean_reg(&mut self, cell: Cell, ignore: &[Cell], val: u16) {
-        for region in self
-            .regions
-            .clone()
-            .iter()
-            .filter(|reg| reg.contains(&cell))
-        {
+        let mut regions = vec![];
+        for region in self.regions.iter().filter(|reg| reg.contains(&cell)) {
+            regions.push(region.clone());
+        }
+        for region in regions {
             for cell in region {
-                if ignore.contains(cell) {
+                if ignore.contains(&cell) {
                     continue;
                 }
-                self.clean_cell(*cell, val);
+                self.clean_cell(cell, val);
             }
         }
     }
@@ -106,5 +115,87 @@ impl Board {
             self.place_digit(new_val, cell);
         }
         Some(())
+    }
+
+    pub fn place_if_hidden_single(&mut self, cell: Cell) -> Anyhow {
+        if self.get_cell(&cell)?.count_ones() == 1 {
+            return None;
+        }
+        let single = {
+            let cell_val = self.get_cell(&cell)?;
+            let in_row = self.get_row_nums(cell.row, &[cell.col])?;
+            let possible =
+                (0..self.size).find(|val| cell_val & (1 << val) > 0 && in_row & (1 << val) == 0);
+            if possible.is_some() {
+                possible
+            } else {
+                let in_col = self.get_col_nums(cell.col, &[cell.row])?;
+                let possible = (0..self.size)
+                    .find(|val| cell_val & (1 << val) > 0 && in_col & (1 << val) == 0);
+                if possible.is_some() {
+                    possible
+                } else {
+                    let in_reg = self.get_reg_nums(cell, &[cell])?;
+                    let possible = (0..self.size)
+                        .find(|val| cell_val & (1 << val) > 0 && in_reg & (1 << val) == 0);
+                    if possible.is_some() {
+                        possible
+                    } else {
+                        None
+                    }
+                }
+            }
+        };
+        #[allow(clippy::cast_possible_truncation)]
+        if let Some(val) = single {
+            self.place_digit(val as u16, cell);
+            Some(())
+        } else {
+            None
+        }
+    }
+
+    fn get_row_nums(&self, row: usize, ignore: &[usize]) -> Option<u16> {
+        let mut digits = 0;
+
+        for col in 0..9 {
+            if ignore.contains(&col) {
+                continue;
+            }
+            digits |= self.get_cell_coords(row, col)?;
+        }
+
+        Some(digits)
+    }
+
+    fn get_col_nums(&self, col: usize, ignore: &[usize]) -> Option<u16> {
+        let mut digits = 0;
+
+        for row in 0..9 {
+            if ignore.contains(&row) {
+                continue;
+            }
+            digits |= self.get_cell_coords(row, col)?;
+        }
+
+        Some(digits)
+    }
+
+    fn get_reg_nums(&self, cell: Cell, ignore: &[Cell]) -> Option<u16> {
+        let mut digits = 0;
+        let mut regions = vec![];
+        for region in self.regions.iter().filter(|reg| reg.contains(&cell)) {
+            regions.push(region.clone());
+        }
+        for region in regions {
+            for cell in region {
+                if ignore.contains(&cell) {
+                    continue;
+                }
+                digits |= self.get_cell(&cell)?;
+            }
+        }
+
+        Some(digits)
     }
 }
