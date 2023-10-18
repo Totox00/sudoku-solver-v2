@@ -16,6 +16,15 @@ pub struct Cell {
 pub type Region = Vec<Cell>;
 type Anyhow = Option<()>;
 
+macro_rules! get_regions_with_cell {
+    ($board:ident, $cell:expr) => {
+        $board
+            .regions
+            .iter()
+            .filter(|region| region.contains($cell))
+    };
+}
+
 impl Board {
     pub fn solve(&mut self) {
         self.place_hidden_single();
@@ -197,11 +206,7 @@ impl Board {
 
     pub fn get_reg_nums(&self, cell: Cell, ignore: &[Cell]) -> Option<u16> {
         let mut digits = 0;
-        let mut regions = vec![];
-        for region in self.regions.iter().filter(|reg| reg.contains(&cell)) {
-            regions.push(region.clone());
-        }
-        for region in regions {
+        for region in get_regions_with_cell!(self, &cell) {
             for cell in region {
                 if ignore.contains(&cell) {
                     continue;
@@ -229,16 +234,8 @@ impl Board {
             .filter(|(a, b)| {
                 a.row == b.row
                     || a.col == b.col
-                    || self
-                        .regions
-                        .iter()
-                        .filter(|region| region.contains(a))
-                        .any(|areg| {
-                            self.regions
-                                .iter()
-                                .filter(|region| region.contains(b))
-                                .any(move |breg| areg == breg)
-                        })
+                    || get_regions_with_cell!(self, a)
+                        .any(|areg| get_regions_with_cell!(self, b).any(move |breg| areg == breg))
             })
             .collect();
 
