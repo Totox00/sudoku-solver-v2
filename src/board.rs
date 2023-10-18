@@ -208,10 +208,10 @@ impl Board {
         let mut digits = 0;
         for region in get_regions_with_cell!(self, &cell) {
             for cell in region {
-                if ignore.contains(&cell) {
+                if ignore.contains(cell) {
                     continue;
                 }
-                digits |= self.get_cell(&cell)?;
+                digits |= self.get_cell(cell)?;
             }
         }
 
