@@ -8,7 +8,7 @@ pub struct XWing {
     pub val: u16,
 }
 
-pub fn xwings_from_board(board: &Board) -> Vec<XWing> {
+pub fn from_board(board: &Board) -> Vec<XWing> {
     let size = board.size;
 
     let pairs: Vec<_> = (0..size)
@@ -57,8 +57,9 @@ pub fn xwings_from_board(board: &Board) -> Vec<XWing> {
         .filter(|(_xwing, vals)| vals.iter().all(|v| v.count_ones() > 1))
         .flat_map(|(xwing, vals)| {
             let v = vals.iter().fold(default_cell(size), |acc, val| acc & val);
-            (1..size + 1).filter_map(move |d| {
+            (1..=size).filter_map(move |d| {
                 if v & 1 << d > 0 {
+                    #[allow(clippy::cast_possible_truncation)]
                     Some(XWing {
                         clear_rows: xwing.clear_rows,
                         rows: xwing.rows,

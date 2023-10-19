@@ -3,7 +3,10 @@ use std::{
     vec,
 };
 
-use crate::board::{get_regions_with_cells, Board, Cell};
+use crate::{
+    board::{get_regions_with_cells, Board, Cell},
+    groups,
+};
 
 #[derive(Debug, Clone)]
 pub struct Group {
@@ -19,7 +22,7 @@ pub struct Relation {
     pub reg: bool,
 }
 
-pub fn groups_from_board(board: &Board) -> Vec<Group> {
+pub fn from_board(board: &Board) -> Vec<Group> {
     let size = board.size;
 
     let groups: Vec<_> = (0..size)
@@ -101,7 +104,7 @@ pub fn groups_from_board(board: &Board) -> Vec<Group> {
                 .map(|group| group.calc_relations(board))
                 .filter(|group| group.relation.col || group.relation.row || group.relation.reg),
         )
-        .filter(|group| group.no_repeats())
+        .filter(groups::Group::no_repeats)
         .collect()
 }
 
@@ -120,7 +123,7 @@ impl Group {
                     .iter()
                     .map(|cell| cell.col)
                     .all(|col| col == self.cells[0].col),
-                reg: regs.next() != None,
+                reg: regs.next().is_some(),
             },
             cells: self.cells,
             vals: self.vals,

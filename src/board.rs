@@ -1,7 +1,6 @@
 use crate::{
     defaults::{default_cell, default_regions},
-    groups::groups_from_board,
-    xwings::xwings_from_board,
+    groups, xwings,
 };
 
 #[derive(Debug, Clone)]
@@ -237,13 +236,14 @@ impl Board {
     }
 
     pub fn clean_groups(&mut self) {
-        let groups = groups_from_board(self);
+        let groups = groups::from_board(self);
 
         let mut has_changed = false;
         for group in groups {
             let vals: Vec<_> = (0..self.size)
                 .filter_map(|d| {
                     if group.vals & 1 << d > 0 {
+                        #[allow(clippy::cast_possible_truncation)]
                         Some(d as u16)
                     } else {
                         None
@@ -251,24 +251,24 @@ impl Board {
                 })
                 .collect();
 
-            vals.iter().for_each(|val| {
+            for val in vals {
                 if group.relation.row {
                     has_changed = self.clean_row(
                         group.cells[0].row,
                         &group.cells.iter().map(|cell| cell.col).collect::<Vec<_>>()[..],
-                        *val,
+                        val,
                     ) || has_changed;
                 } else if group.relation.col {
                     has_changed = self.clean_col(
                         group.cells[0].col,
                         &group.cells.iter().map(|cell| cell.row).collect::<Vec<_>>()[..],
-                        *val,
+                        val,
                     ) || has_changed;
                 }
                 if group.relation.reg {
-                    has_changed = self.clean_reg(group.cells[0], &group.cells, *val) || has_changed;
+                    has_changed = self.clean_reg(group.cells[0], &group.cells, val) || has_changed;
                 }
-            })
+            }
         }
 
         if has_changed {
@@ -277,7 +277,7 @@ impl Board {
     }
 
     pub fn clean_xwings(&mut self) {
-        let xwings = xwings_from_board(self);
+        let xwings = xwings::from_board(self);
 
         let mut has_changed = false;
         for xwing in xwings {

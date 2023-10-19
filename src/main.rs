@@ -3,7 +3,6 @@ use std::time::Instant;
 use crate::{
     board::{Board, Cell},
     format::format,
-    xwings::xwings_from_board,
 };
 
 mod board;
