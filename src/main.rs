@@ -10,6 +10,7 @@ mod defaults;
 mod format;
 mod groups;
 mod xwings;
+mod ywings;
 
 fn main() {
     let start = Instant::now();

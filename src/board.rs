@@ -1,6 +1,6 @@
 use crate::{
     defaults::{default_cell, default_regions},
-    groups, xwings,
+    groups, xwings, ywings,
 };
 
 #[derive(Debug, Clone)]
@@ -46,6 +46,7 @@ impl Board {
         self.place_hidden_single();
         self.clean_groups();
         self.clean_xwings();
+        self.clean_ywings();
     }
 
     pub fn new_custom_regions(size: usize, regions: Vec<Region>) -> Self {
@@ -272,7 +273,7 @@ impl Board {
         }
 
         if has_changed {
-            return self.solve();
+            self.solve();
         }
     }
 
@@ -299,7 +300,30 @@ impl Board {
         }
 
         if has_changed {
-            return self.solve();
+            self.solve();
         }
+    }
+
+    pub fn clean_ywings(&mut self) {
+        let ywings = ywings::from_board(self);
+
+        let mut has_changed = false;
+        for ywing in ywings {
+            has_changed = self.clean_cell(ywing.target, ywing.val).unwrap_or(false) || has_changed;
+        }
+
+        if has_changed {
+            self.solve();
+        }
+    }
+}
+
+impl Cell {
+    pub fn can_see(&self, board: &Board, target: &Cell) -> bool {
+        self.row == target.row
+            || self.col == target.col
+            || get_regions_with_cells!(board, &[self, target])
+                .next()
+                .is_some()
     }
 }
