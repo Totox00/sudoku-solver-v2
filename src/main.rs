@@ -3,12 +3,14 @@ use std::time::Instant;
 use crate::{
     board::{Board, Cell},
     format::format,
+    xwings::xwings_from_board,
 };
 
 mod board;
 mod defaults;
-mod groups;
 mod format;
+mod groups;
+mod xwings;
 
 fn main() {
     let start = Instant::now();
@@ -109,6 +111,43 @@ fn main() {
     board.place_digit(3, Cell { row: 8, col: 4 });
     board.place_digit(1, Cell { row: 8, col: 7 });
     board.place_digit(8, Cell { row: 8, col: 8 });
+    board.solve();
+    let elapsed = start.elapsed();
+    println!("{}", format(&board).unwrap());
+    println!("Elapsed time: {elapsed:?}");
+
+    let start = Instant::now();
+    let mut board = Board::new(9);
+    board.place_digit(3, Cell { row: 0, col: 0 });
+    board.place_digit(9, Cell { row: 0, col: 2 });
+    board.place_digit(4, Cell { row: 0, col: 6 });
+    board.place_digit(2, Cell { row: 1, col: 0 });
+    board.place_digit(7, Cell { row: 1, col: 3 });
+    board.place_digit(9, Cell { row: 1, col: 5 });
+    board.place_digit(8, Cell { row: 2, col: 1 });
+    board.place_digit(7, Cell { row: 2, col: 2 });
+    board.place_digit(7, Cell { row: 3, col: 0 });
+    board.place_digit(5, Cell { row: 3, col: 1 });
+    board.place_digit(6, Cell { row: 3, col: 4 });
+    board.place_digit(2, Cell { row: 3, col: 6 });
+    board.place_digit(3, Cell { row: 3, col: 7 });
+    board.place_digit(6, Cell { row: 4, col: 0 });
+    board.place_digit(9, Cell { row: 4, col: 3 });
+    board.place_digit(4, Cell { row: 4, col: 5 });
+    board.place_digit(8, Cell { row: 4, col: 8 });
+    board.place_digit(2, Cell { row: 5, col: 1 });
+    board.place_digit(8, Cell { row: 5, col: 2 });
+    board.place_digit(5, Cell { row: 5, col: 4 });
+    board.place_digit(4, Cell { row: 5, col: 7 });
+    board.place_digit(1, Cell { row: 5, col: 8 });
+    board.place_digit(5, Cell { row: 6, col: 6 });
+    board.place_digit(9, Cell { row: 6, col: 7 });
+    board.place_digit(1, Cell { row: 7, col: 3 });
+    board.place_digit(6, Cell { row: 7, col: 5 });
+    board.place_digit(7, Cell { row: 7, col: 8 });
+    board.place_digit(6, Cell { row: 8, col: 2 });
+    board.place_digit(1, Cell { row: 8, col: 6 });
+    board.place_digit(4, Cell { row: 8, col: 8 });
     board.solve();
     let elapsed = start.elapsed();
     println!("{}", format(&board).unwrap());

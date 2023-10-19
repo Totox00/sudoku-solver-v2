@@ -1,6 +1,7 @@
 use crate::{
     defaults::{default_cell, default_regions},
     groups::groups_from_board,
+    xwings::xwings_from_board,
 };
 
 #[derive(Debug, Clone)]
@@ -45,6 +46,7 @@ impl Board {
     pub fn solve(&mut self) {
         self.place_hidden_single();
         self.clean_groups();
+        self.clean_xwings();
     }
 
     pub fn new_custom_regions(size: usize, regions: Vec<Region>) -> Self {
@@ -267,6 +269,33 @@ impl Board {
                     has_changed = self.clean_reg(group.cells[0], &group.cells, *val) || has_changed;
                 }
             })
+        }
+
+        if has_changed {
+            return self.solve();
+        }
+    }
+
+    pub fn clean_xwings(&mut self) {
+        let xwings = xwings_from_board(self);
+
+        let mut has_changed = false;
+        for xwing in xwings {
+            if xwing.clear_rows {
+                has_changed =
+                    self.clean_row(xwing.rows.0, &[xwing.cols.0, xwing.cols.1], xwing.val)
+                        || has_changed;
+                has_changed =
+                    self.clean_row(xwing.rows.1, &[xwing.cols.0, xwing.cols.1], xwing.val)
+                        || has_changed;
+            } else {
+                has_changed =
+                    self.clean_col(xwing.cols.0, &[xwing.rows.0, xwing.rows.1], xwing.val)
+                        || has_changed;
+                has_changed =
+                    self.clean_col(xwing.cols.1, &[xwing.rows.0, xwing.rows.1], xwing.val)
+                        || has_changed;
+            }
         }
 
         if has_changed {
