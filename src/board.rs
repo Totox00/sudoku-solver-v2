@@ -1,4 +1,7 @@
-use crate::defaults::{default_cell, default_regions};
+use crate::{
+    defaults::{default_cell, default_regions},
+    groups::groups_from_board,
+};
 
 #[derive(Debug, Clone)]
 pub struct Board {
@@ -25,10 +28,23 @@ macro_rules! get_regions_with_cell {
     };
 }
 
+pub(crate) use get_regions_with_cell;
+
+macro_rules! get_regions_with_cells {
+    ($board:ident, $cells:expr) => {
+        $board
+            .regions
+            .iter()
+            .filter(|region| $cells.iter().all(|cell| region.contains(cell)))
+    };
+}
+
+pub(crate) use get_regions_with_cells;
+
 impl Board {
     pub fn solve(&mut self) {
         self.place_hidden_single();
-        self.clean_pairs();
+        self.clean_groups();
     }
 
     pub fn new_custom_regions(size: usize, regions: Vec<Region>) -> Self {
@@ -218,45 +234,39 @@ impl Board {
         Some(digits)
     }
 
-    pub fn clean_pairs(&mut self) {
-        let size = self.size;
-        let possible_pair_cells: Vec<_> = (0..size)
-            .flat_map(|row| (0..size).map(move |col| Cell { row, col }))
-            .filter(|cell| self.get_cell(cell).unwrap_or(0).count_ones() == 2)
-            .collect();
-
-        let pairs: Vec<_> = possible_pair_cells[..]
-            .iter()
-            .zip(0..)
-            .flat_map(|(a, i)| possible_pair_cells[i..].iter().map(move |b| (a, b)))
-            .filter(|(a, b)| a != b)
-            .filter(|(a, b)| self.get_cell(a) == self.get_cell(b))
-            .filter(|(a, b)| {
-                a.row == b.row
-                    || a.col == b.col
-                    || get_regions_with_cell!(self, a)
-                        .any(|areg| get_regions_with_cell!(self, b).any(move |breg| areg == breg))
-            })
-            .collect();
+    pub fn clean_groups(&mut self) {
+        let groups = groups_from_board(self);
 
         let mut has_changed = false;
-        for (a, b) in pairs {
-            #[allow(clippy::cast_possible_truncation)]
-            let val1 = self.get_cell(a).unwrap_or(1).trailing_zeros() as u16;
-            #[allow(clippy::cast_possible_truncation)]
-            let val2 =
-                (self.get_cell(a).unwrap_or(1) >> (val1 + 1)).trailing_zeros() as u16 + val1 + 1;
+        for group in groups {
+            let vals: Vec<_> = (0..self.size)
+                .filter_map(|d| {
+                    if group.vals & 1 << d > 0 {
+                        Some(d as u16)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
 
-            if a.row == b.row {
-                has_changed = self.clean_row(a.row, &[a.col, b.col], val1) || has_changed;
-                has_changed = self.clean_row(a.row, &[a.col, b.col], val2) || has_changed;
-            } else if a.col == b.col {
-                has_changed = self.clean_col(a.col, &[a.row, b.row], val1) || has_changed;
-                has_changed = self.clean_col(a.col, &[a.row, b.row], val2) || has_changed;
-            } else {
-                has_changed = self.clean_reg(*a, &[*a, *b], val1) || has_changed;
-                has_changed = self.clean_reg(*a, &[*a, *b], val2) || has_changed;
-            }
+            vals.iter().for_each(|val| {
+                if group.relation.row {
+                    has_changed = self.clean_row(
+                        group.cells[0].row,
+                        &group.cells.iter().map(|cell| cell.col).collect::<Vec<_>>()[..],
+                        *val,
+                    ) || has_changed;
+                } else if group.relation.col {
+                    has_changed = self.clean_col(
+                        group.cells[0].col,
+                        &group.cells.iter().map(|cell| cell.row).collect::<Vec<_>>()[..],
+                        *val,
+                    ) || has_changed;
+                }
+                if group.relation.reg {
+                    has_changed = self.clean_reg(group.cells[0], &group.cells, *val) || has_changed;
+                }
+            })
         }
 
         if has_changed {

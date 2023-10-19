@@ -7,6 +7,7 @@ use crate::{
 
 mod board;
 mod defaults;
+mod groups;
 mod format;
 
 fn main() {
