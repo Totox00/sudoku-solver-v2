@@ -1,6 +1,6 @@
 use crate::{
     defaults::{default_cell, default_regions},
-    groups, xwings, ywings,
+    groups, intersections, xwings, ywings,
 };
 
 #[derive(Debug, Clone)]
@@ -47,6 +47,7 @@ impl Board {
         self.clean_groups();
         self.clean_xwings();
         self.clean_ywings();
+        self.clean_intersections();
     }
 
     pub fn new_custom_regions(size: usize, regions: Vec<Region>) -> Self {
@@ -310,6 +311,22 @@ impl Board {
         let mut has_changed = false;
         for ywing in ywings {
             has_changed = self.clean_cell(ywing.target, ywing.val).unwrap_or(false) || has_changed;
+        }
+
+        if has_changed {
+            self.solve();
+        }
+    }
+
+    pub fn clean_intersections(&mut self) {
+        let intersections = intersections::from_board(self);
+
+        let mut has_changed = false;
+        for intersection in intersections {
+            for cell in intersection.cells {
+                has_changed =
+                    self.clean_cell(cell, intersection.val).unwrap_or(false) || has_changed;
+            }
         }
 
         if has_changed {
