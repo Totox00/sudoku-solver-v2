@@ -5,6 +5,7 @@ use crate::{
     format::format,
 };
 
+mod misc;
 mod board;
 mod defaults;
 mod format;
@@ -12,6 +13,7 @@ mod groups;
 mod xwings;
 mod ywings;
 mod intersections;
+mod colouring;
 
 fn main() {
     let start = Instant::now();
@@ -191,4 +193,6 @@ fn main() {
     dbg!(intersections);
     println!("Elapsed time: {elapsed:?}");
     println!("Elapsed time: {elapsed2:?}");
+
+    colouring::from_board(&board);
 }

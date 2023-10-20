@@ -1,4 +1,9 @@
-use crate::board::{Board, Cell, Region};
+use std::rc::Rc;
+
+use crate::{
+    board::{Board, Cell, Region},
+    misc::{units, Unit},
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Intersection<'a> {
@@ -7,28 +12,15 @@ pub struct Intersection<'a> {
     val: u16,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum Unit<'a> {
-    Row(usize),
-    Col(usize),
-    Reg(&'a Region),
-}
-
 #[derive(Debug, Clone)]
 pub struct IntersectionTarget {
     pub cells: Region,
     pub val: u16,
 }
 
-pub fn from_board(board: &Board) -> Vec<IntersectionTarget> {
+pub fn from_board(board: &Board) -> Rc<[IntersectionTarget]> {
     let size = board.size;
-    let units: Vec<_> = board
-        .regions
-        .iter()
-        .map(|reg| Unit::Reg(reg))
-        .chain((0..size).map(|i| Unit::Row(i)))
-        .chain((0..size).map(|i| Unit::Col(i)))
-        .collect();
+    let units = units(board);
 
     units
         .iter()

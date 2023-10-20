@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{board::Board, defaults::default_cell};
 
 #[derive(Debug, Clone, Copy)]
@@ -8,7 +10,7 @@ pub struct XWing {
     pub val: u16,
 }
 
-pub fn from_board(board: &Board) -> Vec<XWing> {
+pub fn from_board(board: &Board) -> Rc<[XWing]> {
     let size = board.size;
 
     let pairs: Vec<_> = (0..size)

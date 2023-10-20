@@ -241,7 +241,7 @@ impl Board {
         let groups = groups::from_board(self);
 
         let mut has_changed = false;
-        for group in groups {
+        for group in groups.into_iter() {
             let vals: Vec<_> = (0..self.size)
                 .filter_map(|d| {
                     if group.vals & 1 << d > 0 {
@@ -282,7 +282,7 @@ impl Board {
         let xwings = xwings::from_board(self);
 
         let mut has_changed = false;
-        for xwing in xwings {
+        for xwing in xwings.into_iter() {
             if xwing.clear_rows {
                 has_changed =
                     self.clean_row(xwing.rows.0, &[xwing.cols.0, xwing.cols.1], xwing.val)
@@ -309,7 +309,7 @@ impl Board {
         let ywings = ywings::from_board(self);
 
         let mut has_changed = false;
-        for ywing in ywings {
+        for ywing in ywings.into_iter() {
             has_changed = self.clean_cell(ywing.target, ywing.val).unwrap_or(false) || has_changed;
         }
 
@@ -322,10 +322,10 @@ impl Board {
         let intersections = intersections::from_board(self);
 
         let mut has_changed = false;
-        for intersection in intersections {
-            for cell in intersection.cells {
+        for intersection in intersections.into_iter() {
+            for cell in &intersection.cells {
                 has_changed =
-                    self.clean_cell(cell, intersection.val).unwrap_or(false) || has_changed;
+                    self.clean_cell(*cell, intersection.val).unwrap_or(false) || has_changed;
             }
         }
 

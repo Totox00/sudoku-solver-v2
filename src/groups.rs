@@ -1,7 +1,4 @@
-use std::{
-    ops::{Add, AddAssign},
-    vec,
-};
+use std::{ops::{Add, AddAssign}, rc::Rc};
 
 use crate::board::{get_regions_with_cells, Board, Cell};
 
@@ -19,7 +16,7 @@ pub struct Relation {
     pub reg: bool,
 }
 
-pub fn from_board(board: &Board) -> Vec<Group> {
+pub fn from_board(board: &Board) -> Rc<[Group]> {
     let size = board.size;
 
     let groups: Vec<_> = (0..size)

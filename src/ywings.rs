@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::board::{Board, Cell};
 
 #[derive(Debug)]
@@ -8,7 +10,7 @@ pub struct YWing {
     pub val: u16,
 }
 
-pub fn from_board(board: &Board) -> Vec<YWing> {
+pub fn from_board(board: &Board) -> Rc<[YWing]> {
     let size = board.size;
 
     let cells: Vec<_> = (0..size)
