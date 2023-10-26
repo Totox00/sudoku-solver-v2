@@ -5,15 +5,15 @@ use crate::{
     format::format,
 };
 
-mod misc;
 mod board;
+mod colouring;
 mod defaults;
 mod format;
 mod groups;
+mod intersections;
+mod misc;
 mod xwings;
 mod ywings;
-mod intersections;
-mod colouring;
 
 fn main() {
     let start = Instant::now();
@@ -187,10 +187,10 @@ fn main() {
     board.place_digit(7, Cell { row: 8, col: 5 });
     board.solve();
     let elapsed = start.elapsed();
-    let intersections = intersections::from_board(&board);
+    let colouring = colouring::from_board(&board);
     let elapsed2 = start.elapsed();
     println!("{}", format(&board).unwrap());
-    dbg!(intersections);
+    dbg!(colouring);
     println!("Elapsed time: {elapsed:?}");
     println!("Elapsed time: {elapsed2:?}");
 

@@ -12,13 +12,20 @@ struct Colouring {
 struct ColourNode {
     resolvable: Resolvable,
     connects_to: Vec<usize>,
-    is_coloured: Option<bool>,
+    state: State,
 }
 
 #[derive(Debug, Clone, Copy)]
 enum Resolvable {
     Cell((Cell, u16, u16)),
     Pair((Cell, Cell, u16)),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum State {
+    None,
+    A,
+    B,
 }
 
 #[derive(Debug, Clone)]
@@ -100,8 +107,16 @@ pub fn from_board(board: &Board) -> ColourMap {
     }
 
     colouring.connect(board);
+    
+    if colouring.colour(0, State::A, board) {
+        // no contradiction
+    }
 
-    dbg!(colouring.nodes.iter().zip(0..).collect::<Vec<_>>());
+    colouring.clear_state();
+
+    if colouring.colour(0, State::B, board) {
+        // no contradiction
+    }
 
     ColourMap {
         eliminated: vec![],
@@ -118,7 +133,7 @@ impl Colouring {
         self.nodes.push(ColourNode {
             resolvable: Resolvable::Cell(cell),
             connects_to: vec![],
-            is_coloured: None,
+            state: State::None,
         })
     }
 
@@ -126,7 +141,7 @@ impl Colouring {
         self.nodes.push(ColourNode {
             resolvable: Resolvable::Pair(pair),
             connects_to: vec![],
-            is_coloured: None,
+            state: State::None,
         })
     }
 
@@ -136,32 +151,155 @@ impl Colouring {
             .flat_map(|(a, i)| (i..self.nodes.len()).map(move |b| (a, b)))
             .collect();
         for pair in pairs {
-            if match (self.nodes[pair.0].resolvable, self.nodes[pair.1].resolvable) {
-                (Resolvable::Cell((a, a1, a2)), Resolvable::Cell((b, b1, b2))) => {
-                    (a1 == b1 || a1 == b2 || a2 == b1 || a2 == b2) && a.can_see(board, &b)
-                }
-                (Resolvable::Cell((c, c1, c2)), Resolvable::Pair((p1, p2, p)))
-                | (Resolvable::Pair((p1, p2, p)), Resolvable::Cell((c, c1, c2))) => {
-                    c == p1
-                        || c == p2
-                        || ((c.can_see(board, &p1) || c.can_see(board, &p2))
-                            && (c1 == p || c2 == p))
-                }
-                (Resolvable::Pair((c1, c2, a)), Resolvable::Pair((d1, d2, b))) => {
-                    c1 == d1
-                        || c1 == d2
-                        || c2 == d1
-                        || c2 == d2
-                        || (a == b
-                            && (c1.can_see(board, &d1)
-                                || c1.can_see(board, &d2)
-                                || c2.can_see(board, &d1)
-                                || c2.can_see(board, &d2)))
-                }
-            } {
+            if should_connect(
+                &self.nodes[pair.0].resolvable,
+                &self.nodes[pair.1].resolvable,
+                board,
+            ) {
                 self.nodes.get_mut(pair.0).unwrap().connects_to.push(pair.1);
                 self.nodes.get_mut(pair.1).unwrap().connects_to.push(pair.0);
             }
         }
+    }
+
+    fn colour(&mut self, node: usize, state: State, board: &Board) -> bool {
+        if state == State::None {
+            return true;
+        }
+
+        let cascade = if let Some(node) = self.nodes.get_mut(node) {
+            match node.state {
+                State::None => {
+                    node.state = state;
+                    node.connects_to.clone()
+                }
+                _ => return true,
+            }
+        } else {
+            return true;
+        };
+
+        cascade.iter().all(|other| {
+            let matching_state = matching_state(
+                &self.nodes[node].resolvable,
+                &self.nodes[*other].resolvable,
+                state,
+                board,
+            );
+
+            if matching_state != State::None {
+                self.colour(*other, matching_state, board)
+            } else {
+                true
+            }
+        })
+    }
+
+    fn clear_state(&mut self) {
+        for node in &mut self.nodes {
+            node.state = State::None
+        }
+    }
+}
+
+#[inline(always)]
+fn should_connect(a: &Resolvable, b: &Resolvable, board: &Board) -> bool {
+    match (a, b) {
+        (Resolvable::Cell((a, a1, a2)), Resolvable::Cell((b, b1, b2))) => {
+            (a1 == b1 || a1 == b2 || a2 == b1 || a2 == b2) && a.can_see(board, &b)
+        }
+        (Resolvable::Cell((c, c1, c2)), Resolvable::Pair((p1, p2, p)))
+        | (Resolvable::Pair((p1, p2, p)), Resolvable::Cell((c, c1, c2))) => {
+            c == p1
+                || c == p2
+                || ((c.can_see(board, &p1) || c.can_see(board, &p2)) && (c1 == p || c2 == p))
+        }
+        (Resolvable::Pair((c1, c2, a)), Resolvable::Pair((d1, d2, b))) => {
+            c1 == d1
+                || c1 == d2
+                || c2 == d1
+                || c2 == d2
+                || (a == b
+                    && (c1.can_see(board, &d1)
+                        || c1.can_see(board, &d2)
+                        || c2.can_see(board, &d1)
+                        || c2.can_see(board, &d2)))
+        }
+    }
+}
+
+#[inline(always)]
+fn matching_state(a: &Resolvable, b: &Resolvable, state: State, board: &Board) -> State {
+    match (a, b) {
+        (Resolvable::Cell((_, a1, a2)), Resolvable::Cell((_, b1, b2))) => {
+            if match_state(state, a1, a2) == match_state(state, b2, b1) {
+                state
+            } else {
+                State::None
+            }
+        }
+        (Resolvable::Cell((c, c1, c2)), Resolvable::Pair((p1, p2, p))) => {
+            if c == p1 || c == p2 {
+                if match_state(state, c1, c2) == p {
+                    invert_state_if(c == p2, state)
+                } else {
+                    invert_state_if(c == p1, state)
+                }
+            } else {
+                if match_state(state, c1, c2) == p {
+                    if c.can_see(board, match_state(state, p2, p1)) {
+                        state
+                    } else {
+                        State::None
+                    }
+                } else {
+                    State::None
+                }
+            }
+        }
+        (Resolvable::Pair((p1, p2, p)), Resolvable::Cell((c, c1, c2))) => {
+            if c == match_state(state, p1, p2) {
+                invert_state_if(match_state(state, c2, c1) == p, state)
+            } else if c == match_state(state, p2, p1)
+                || match_state(state, p1, p2).can_see(board, &c)
+            {
+                invert_state_if(match_state(state, c1, c2) == p, state)
+            } else {
+                State::None
+            }
+        }
+        (Resolvable::Pair((c1, c2, a)), Resolvable::Pair((d1, d2, b))) => {
+            if match_state(state, c1, c2) == match_state(state, d1, d2) {
+                invert_state_if(a != b, state)
+            } else if match_state(state, c1, c2).can_see(board, match_state(state, d2, d1)) {
+                state
+            } else {
+                State::None
+            }
+        }
+    }
+}
+
+fn match_state<T>(state: State, v1: T, v2: T) -> T {
+    match state {
+        State::None => unreachable!(),
+        State::A => v1,
+        State::B => v2,
+    }
+}
+
+fn invert_state(state: State) -> State {
+    match state {
+        State::None => State::None,
+        State::A => State::B,
+        State::B => State::A,
+    }
+}
+
+fn invert_state_if(b: bool, state: State) -> State {
+    if b {
+        invert_state(state)
+    } else {
+        state
     }
 }
