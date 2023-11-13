@@ -107,15 +107,45 @@ pub fn from_board(board: &Board) -> ColourMap {
     }
 
     colouring.connect(board);
-    
-    if colouring.colour(0, State::A, board) {
-        // no contradiction
+
+    let possible = colouring.get_possible_colourings(board);
+
+    dbg!(&possible);
+    dbg!(&possible[0]
+        .iter()
+        .filter(|a| possible[1..].iter().all(|other| other.contains(a)))
+        .collect::<Vec<_>>());
+
+    while let Some(first) = colouring
+        .nodes
+        .iter()
+        .position(|node| node.state == State::None)
+    {
+        if !colouring.colour(first, State::A, board) {
+            return ColourMap {
+                eliminated: vec![],
+                placed: vec![match colouring.nodes[first].resolvable {
+                    Resolvable::Cell((c, _, v)) | Resolvable::Pair((_, c, v)) => (c, v),
+                }],
+            };
+        }
     }
 
     colouring.clear_state();
 
-    if colouring.colour(0, State::B, board) {
-        // no contradiction
+    while let Some(first) = colouring
+        .nodes
+        .iter()
+        .position(|node| node.state == State::None)
+    {
+        if !colouring.colour(first, State::B, board) {
+            return ColourMap {
+                eliminated: vec![],
+                placed: vec![match colouring.nodes[first].resolvable {
+                    Resolvable::Cell((c, v, _)) | Resolvable::Pair((c, _, v)) => (c, v),
+                }],
+            };
+        }
     }
 
     ColourMap {
@@ -199,6 +229,47 @@ impl Colouring {
         for node in &mut self.nodes {
             node.state = State::None
         }
+    }
+
+    fn placed_digits(&self) -> Vec<(Cell, u16)> {
+        let mut digits = self
+            .nodes
+            .iter()
+            .filter_map(|node| match (node.resolvable, node.state) {
+                (Resolvable::Cell((c, v, _)), State::A)
+                | (Resolvable::Cell((c, _, v)), State::B)
+                | (Resolvable::Pair((c, _, v)), State::A)
+                | (Resolvable::Pair((_, c, v)), State::B) => Some((c, v)),
+                (_, State::None) => None,
+            })
+            .collect::<Vec<_>>();
+
+        digits.sort();
+        digits.dedup();
+
+        digits
+    }
+
+    fn get_possible_colourings(&self, board: &Board) -> Vec<Vec<(Cell, u16)>> {
+        let mut out = vec![];
+
+        if let Some(first) = self.nodes.iter().position(|node| node.state == State::None) {
+            let mut tmp;
+
+            tmp = self.clone();
+            if tmp.colour(first, State::A, board) {
+                out.append(&mut tmp.get_possible_colourings(board));
+            }
+
+            tmp = self.clone();
+            if tmp.colour(first, State::B, board) {
+                out.append(&mut tmp.get_possible_colourings(board));
+            }
+        } else {
+            out.push(self.placed_digits().into());
+        }
+
+        out
     }
 }
 
