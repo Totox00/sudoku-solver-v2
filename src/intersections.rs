@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     board::{Board, Cell, Region},
-    misc::{units, Unit},
+    misc::{is_set, units, Unit},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -38,6 +38,7 @@ pub fn from_board(board: &Board) -> Rc<[IntersectionTarget]> {
             _ => true,
         })
         .flat_map(|intersection| {
+            #[allow(clippy::cast_possible_truncation)]
             (1..=size)
                 .map(move |val| Intersection {
                     origin: intersection.origin,
@@ -54,12 +55,12 @@ impl Intersection<'_> {
         let origin_cells: Region = match self.origin {
             Unit::Row(row) => (0..board.size).map(|col| Cell { row, col }).collect(),
             Unit::Col(col) => (0..board.size).map(|row| Cell { row, col }).collect(),
-            Unit::Reg(reg) => reg.to_vec(),
+            Unit::Reg(reg) => reg.clone(),
         };
         let target_cells: Region = match self.target {
             Unit::Row(row) => (0..board.size).map(|col| Cell { row, col }).collect(),
             Unit::Col(col) => (0..board.size).map(|row| Cell { row, col }).collect(),
-            Unit::Reg(reg) => reg.to_vec(),
+            Unit::Reg(reg) => reg.clone(),
         };
 
         let overlap: Vec<_> = origin_cells
@@ -69,16 +70,16 @@ impl Intersection<'_> {
 
         if overlap
             .iter()
-            .all(|cell| board.get_cell(cell).unwrap_or(1).count_ones() > 1)
+            .all(|cell| board.get_cell(cell).unwrap().count_ones() > 1)
             && origin_cells.iter().all(|cell| {
-                overlap.contains(&cell) || board.get_cell(cell).unwrap_or(0) & 1 << self.val == 0
+                overlap.contains(&cell) || !is_set!(board.get_cell(cell).unwrap(), self.val)
             })
         {
             Some(IntersectionTarget {
                 cells: target_cells
                     .iter()
                     .filter(|cell| !overlap.contains(cell))
-                    .map(|cell| *cell)
+                    .copied()
                     .collect(),
                 val: self.val,
             })

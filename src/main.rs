@@ -187,12 +187,8 @@ fn main() {
     board.place_digit(7, Cell { row: 8, col: 5 });
     board.solve();
     let elapsed = start.elapsed();
-    let colouring = colouring::from_board(&board);
-    let elapsed2 = start.elapsed();
     println!("{}", format(&board).unwrap());
-    dbg!(colouring);
     println!("Elapsed time: {elapsed:?}");
-    println!("Elapsed time: {elapsed2:?}");
 
     colouring::from_board(&board);
 }

@@ -1,4 +1,7 @@
-use std::{ops::{Add, AddAssign}, rc::Rc};
+use std::{
+    ops::{Add, AddAssign},
+    rc::Rc,
+};
 
 use crate::board::{get_regions_with_cells, Board, Cell};
 
@@ -14,6 +17,34 @@ pub struct Relation {
     pub row: bool,
     pub col: bool,
     pub reg: bool,
+}
+
+macro_rules! init_group {
+    ($groups:ident) => {
+        $groups.iter().zip(1..)
+    };
+}
+
+macro_rules! finish_group {
+    ($iter:expr, $groups:ident, $board:ident, $size:expr) => {
+        $iter
+            .flat_map(|(a, i)| $groups[i..].iter().map(move |b| a.clone() + b.clone()))
+            .filter(|group| group.vals.count_ones() <= $size)
+            .map(|group| group.calc_relations($board))
+            .filter(|group| group.relation.col || group.relation.row || group.relation.reg)
+    };
+}
+
+macro_rules! expand_group {
+    ($iter:expr, $groups:ident) => {
+        $iter
+            .flat_map(|(a, i)| {
+                $groups[i..]
+                    .iter()
+                    .map(move |b| (a.clone() + b.clone(), i + 1))
+            })
+            .filter(|(group, _)| group.vals.count_ones() <= 4)
+    };
 }
 
 pub fn from_board(board: &Board) -> Rc<[Group]> {
@@ -55,49 +86,19 @@ pub fn from_board(board: &Board) -> Rc<[Group]> {
         .filter(|group| !group.cells.is_empty())
         .collect();
 
-    groups
-        .iter()
-        .zip(1..)
-        .flat_map(|(a, i)| groups[i..].iter().map(|b| a.clone() + b.clone()))
-        .filter(|group| group.vals.count_ones() == 2)
-        .map(|group| group.calc_relations(board))
-        .filter(|group| group.relation.col || group.relation.row || group.relation.reg)
-        .chain(
-            groups
-                .iter()
-                .zip(1..)
-                .flat_map(|(a, i)| {
-                    groups[i..]
-                        .iter()
-                        .map(move |b| (a.clone() + b.clone(), i + 1))
-                })
-                .filter(|(group, _)| group.vals.count_ones() <= 3)
-                .flat_map(|(a, i)| groups[i..].iter().map(move |b| a.clone() + b.clone()))
-                .filter(|group| group.vals.count_ones() <= 3)
-                .map(|group| group.calc_relations(board))
-                .filter(|group| group.relation.col || group.relation.row || group.relation.reg),
-        )
-        .chain(
-            groups
-                .iter()
-                .zip(1..)
-                .flat_map(|(a, i)| {
-                    groups[i..]
-                        .iter()
-                        .map(move |b| (a.clone() + b.clone(), i + 1))
-                })
-                .filter(|(group, _)| group.vals.count_ones() <= 4)
-                .flat_map(|(a, i)| {
-                    groups[i..]
-                        .iter()
-                        .map(move |b| (a.clone() + b.clone(), i + 1))
-                })
-                .filter(|(group, _)| group.vals.count_ones() <= 4)
-                .flat_map(|(a, i)| groups[i..].iter().map(move |b| a.clone() + b.clone()))
-                .filter(|group| group.vals.count_ones() <= 4)
-                .map(|group| group.calc_relations(board))
-                .filter(|group| group.relation.col || group.relation.row || group.relation.reg),
-        )
+    finish_group!(init_group!(groups), groups, board, 2)
+        .chain(finish_group!(
+            expand_group!(init_group!(groups), groups),
+            groups,
+            board,
+            3
+        ))
+        .chain(finish_group!(
+            expand_group!(expand_group!(init_group!(groups), groups), groups),
+            groups,
+            board,
+            4
+        ))
         .filter(Group::no_repeats)
         .collect()
 }

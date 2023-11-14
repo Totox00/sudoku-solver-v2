@@ -1,6 +1,8 @@
 use crate::{
     defaults::{default_cell, default_regions},
-    groups, intersections, xwings, ywings,
+    groups, intersections,
+    misc::is_set,
+    xwings, ywings,
 };
 
 #[derive(Debug, Clone)]
@@ -140,7 +142,7 @@ impl Board {
         let mut last_val = None;
         let cell_val = self.get_mut_cell(&cell)?;
         assert!(*cell_val != 1 << val, "Cell has no possibilities");
-        if *cell_val & (1 << val) > 0 {
+        if is_set!(*cell_val, val) {
             has_changed = true;
             *cell_val &= !(1 << val);
             #[allow(clippy::cast_possible_truncation)]
@@ -171,19 +173,19 @@ impl Board {
             let cell_val = self.get_cell(&cell)?;
             let in_row = self.get_row_nums(cell.row, &[cell.col])?;
             let possible =
-                (0..self.size).find(|val| cell_val & (1 << val) > 0 && in_row & (1 << val) == 0);
+                (0..self.size).find(|val| is_set!(cell_val, val) && !is_set!(in_row, val));
             if possible.is_some() {
                 possible
             } else {
                 let in_col = self.get_col_nums(cell.col, &[cell.row])?;
-                let possible = (0..self.size)
-                    .find(|val| cell_val & (1 << val) > 0 && in_col & (1 << val) == 0);
+                let possible =
+                    (0..self.size).find(|val| is_set!(cell_val, val) && !is_set!(in_col, val));
                 if possible.is_some() {
                     possible
                 } else {
                     let in_reg = self.get_reg_nums(cell, &[cell])?;
-                    let possible = (0..self.size)
-                        .find(|val| cell_val & (1 << val) > 0 && in_reg & (1 << val) == 0);
+                    let possible =
+                        (0..self.size).find(|val| is_set!(cell_val, val) && !is_set!(in_reg, val));
                     if possible.is_some() {
                         possible
                     } else {
@@ -241,10 +243,10 @@ impl Board {
         let groups = groups::from_board(self);
 
         let mut has_changed = false;
-        for group in groups.into_iter() {
+        for group in groups.iter() {
             let vals: Vec<_> = (0..self.size)
                 .filter_map(|d| {
-                    if group.vals & 1 << d > 0 {
+                    if is_set!(group.vals, d) {
                         #[allow(clippy::cast_possible_truncation)]
                         Some(d as u16)
                     } else {
@@ -282,7 +284,7 @@ impl Board {
         let xwings = xwings::from_board(self);
 
         let mut has_changed = false;
-        for xwing in xwings.into_iter() {
+        for xwing in xwings.iter() {
             if xwing.clear_rows {
                 has_changed =
                     self.clean_row(xwing.rows.0, &[xwing.cols.0, xwing.cols.1], xwing.val)
@@ -309,7 +311,7 @@ impl Board {
         let ywings = ywings::from_board(self);
 
         let mut has_changed = false;
-        for ywing in ywings.into_iter() {
+        for ywing in ywings.iter() {
             has_changed = self.clean_cell(ywing.target, ywing.val).unwrap_or(false) || has_changed;
         }
 
@@ -322,7 +324,7 @@ impl Board {
         let intersections = intersections::from_board(self);
 
         let mut has_changed = false;
-        for intersection in intersections.into_iter() {
+        for intersection in intersections.iter() {
             for cell in &intersection.cells {
                 has_changed =
                     self.clean_cell(*cell, intersection.val).unwrap_or(false) || has_changed;

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{board::Board, defaults::default_cell};
+use crate::{board::Board, defaults::default_cell, misc::is_set};
 
 #[derive(Debug, Clone, Copy)]
 pub struct XWing {
@@ -41,18 +41,10 @@ pub fn from_board(board: &Board) -> Rc<[XWing]> {
             (
                 xwing,
                 [
-                    board
-                        .get_cell_coords(xwing.rows.0, xwing.cols.0)
-                        .unwrap_or(0),
-                    board
-                        .get_cell_coords(xwing.rows.1, xwing.cols.0)
-                        .unwrap_or(0),
-                    board
-                        .get_cell_coords(xwing.rows.0, xwing.cols.1)
-                        .unwrap_or(0),
-                    board
-                        .get_cell_coords(xwing.rows.1, xwing.cols.1)
-                        .unwrap_or(0),
+                    board.get_cell_coords(xwing.rows.0, xwing.cols.0).unwrap(),
+                    board.get_cell_coords(xwing.rows.1, xwing.cols.0).unwrap(),
+                    board.get_cell_coords(xwing.rows.0, xwing.cols.1).unwrap(),
+                    board.get_cell_coords(xwing.rows.1, xwing.cols.1).unwrap(),
                 ],
             )
         })
@@ -60,7 +52,7 @@ pub fn from_board(board: &Board) -> Rc<[XWing]> {
         .flat_map(|(xwing, vals)| {
             let v = vals.iter().fold(default_cell(size), |acc, val| acc & val);
             (1..=size).filter_map(move |d| {
-                if v & 1 << d > 0 {
+                if is_set!(v, d) {
                     #[allow(clippy::cast_possible_truncation)]
                     Some(XWing {
                         clear_rows: xwing.clear_rows,
@@ -78,25 +70,21 @@ pub fn from_board(board: &Board) -> Rc<[XWing]> {
                 (0..size).all(|row| {
                     xwing.rows.0 == row
                         || xwing.rows.1 == row
-                        || board.get_cell_coords(row, xwing.cols.0).unwrap_or(0) & 1 << xwing.val
-                            == 0
+                        || !is_set!(board.get_cell_coords(row, xwing.cols.0).unwrap(), xwing.val)
                 }) && (0..size).all(|row| {
                     xwing.rows.0 == row
                         || xwing.rows.1 == row
-                        || board.get_cell_coords(row, xwing.cols.1).unwrap_or(0) & 1 << xwing.val
-                            == 0
+                        || !is_set!(board.get_cell_coords(row, xwing.cols.1).unwrap(), xwing.val)
                 })
             } else {
                 (0..size).all(|col| {
                     xwing.cols.0 == col
                         || xwing.cols.1 == col
-                        || board.get_cell_coords(xwing.rows.0, col).unwrap_or(0) & 1 << xwing.val
-                            == 0
+                        || !is_set!(board.get_cell_coords(xwing.rows.0, col).unwrap(), xwing.val)
                 }) && (0..size).all(|col| {
                     xwing.cols.0 == col
                         || xwing.cols.1 == col
-                        || board.get_cell_coords(xwing.rows.1, col).unwrap_or(0) & 1 << xwing.val
-                            == 0
+                        || !is_set!(board.get_cell_coords(xwing.rows.1, col).unwrap(), xwing.val)
                 })
             }
         })

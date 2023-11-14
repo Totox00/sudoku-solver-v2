@@ -13,9 +13,9 @@ pub fn units(board: &Board) -> Rc<[Unit]> {
     board
         .regions
         .iter()
-        .map(|reg| Unit::Reg(reg))
-        .chain((0..board.size).map(|i| Unit::Row(i)))
-        .chain((0..board.size).map(|i| Unit::Col(i)))
+        .map(Unit::Reg)
+        .chain((0..board.size).map(Unit::Row))
+        .chain((0..board.size).map(Unit::Col))
         .collect()
 }
 
@@ -24,3 +24,11 @@ pub fn cells(board: &Board) -> Rc<[Cell]> {
         .flat_map(|row| (0..board.size).map(move |col| Cell { row, col }))
         .collect()
 }
+
+macro_rules! is_set {
+    ($val:expr, $bit:expr) => {
+        $val & (1 << $bit) > 0
+    };
+}
+
+pub(crate) use is_set;

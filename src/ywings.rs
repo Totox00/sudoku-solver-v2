@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use crate::board::{Board, Cell};
+use crate::{
+    board::{Board, Cell},
+    misc::is_set,
+};
 
 #[derive(Debug)]
 pub struct YWing {
@@ -50,11 +53,8 @@ pub fn from_board(board: &Board) -> Rc<[YWing]> {
                 .flat_map(|(a, i)| useful_cells[i..].iter().map(move |b| (a, b)))
                 .filter(move |(_, foci)| origin.can_see(board, foci))
                 .filter_map(|(a, b)| {
-                    let foci_vals = (
-                        board.get_cell(a).unwrap_or(0),
-                        board.get_cell(b).unwrap_or(0),
-                    );
-                    if board.get_cell(origin).unwrap_or(0) ^ foci_vals.0 ^ foci_vals.1 == 0 {
+                    let foci_vals = (board.get_cell(a).unwrap(), board.get_cell(b).unwrap());
+                    if board.get_cell(origin).unwrap() ^ foci_vals.0 ^ foci_vals.1 == 0 {
                         #[allow(clippy::cast_possible_truncation)]
                         Some(YWing {
                             origin: *origin,
@@ -80,7 +80,7 @@ pub fn from_board(board: &Board) -> Rc<[YWing]> {
                     val: ywing.val,
                 })
         })
-        .filter(|ywing| board.get_cell(&ywing.target).unwrap_or(0) & 1 << ywing.val > 0)
+        .filter(|ywing| is_set!(board.get_cell(&ywing.target).unwrap(), ywing.val))
         .filter(|ywing| {
             ywing.foci.0.can_see(board, &ywing.target) && ywing.foci.1.can_see(board, &ywing.target)
         })
