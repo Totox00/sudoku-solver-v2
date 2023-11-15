@@ -203,7 +203,7 @@ impl Colouring<'_> {
                 .map(|(i, connection)| {
                     (
                         new.iter()
-                            .position(|(old_i, _)| old_i.contains(&i))
+                            .position(|(old_i, _)| old_i.contains(i))
                             .unwrap(),
                         *connection,
                     )

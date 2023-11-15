@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{env::args, fs::read_to_string, io, path::Path, time::Instant};
 
 use crate::{
     board::{Board, Cell},
@@ -16,177 +16,48 @@ mod xwings;
 mod ywings;
 
 fn main() {
-    let start = Instant::now();
-    let mut board = Board::new(9);
-    board.place_digit(1, Cell { row: 0, col: 3 });
-    board.place_digit(5, Cell { row: 0, col: 5 });
-    board.place_digit(1, Cell { row: 1, col: 0 });
-    board.place_digit(4, Cell { row: 1, col: 1 });
-    board.place_digit(6, Cell { row: 1, col: 6 });
-    board.place_digit(7, Cell { row: 1, col: 7 });
-    board.place_digit(8, Cell { row: 2, col: 1 });
-    board.place_digit(2, Cell { row: 2, col: 5 });
-    board.place_digit(4, Cell { row: 2, col: 6 });
-    board.place_digit(6, Cell { row: 3, col: 1 });
-    board.place_digit(3, Cell { row: 3, col: 2 });
-    board.place_digit(7, Cell { row: 3, col: 4 });
-    board.place_digit(1, Cell { row: 3, col: 7 });
-    board.place_digit(9, Cell { row: 4, col: 0 });
-    board.place_digit(3, Cell { row: 4, col: 8 });
-    board.place_digit(1, Cell { row: 5, col: 1 });
-    board.place_digit(9, Cell { row: 5, col: 4 });
-    board.place_digit(5, Cell { row: 5, col: 6 });
-    board.place_digit(2, Cell { row: 5, col: 7 });
-    board.place_digit(7, Cell { row: 6, col: 2 });
-    board.place_digit(2, Cell { row: 6, col: 3 });
-    board.place_digit(8, Cell { row: 6, col: 7 });
-    board.place_digit(2, Cell { row: 7, col: 1 });
-    board.place_digit(6, Cell { row: 7, col: 2 });
-    board.place_digit(3, Cell { row: 7, col: 7 });
-    board.place_digit(5, Cell { row: 7, col: 8 });
-    board.place_digit(4, Cell { row: 8, col: 3 });
-    board.place_digit(9, Cell { row: 8, col: 5 });
-    board.solve();
-    let elapsed = start.elapsed();
-    println!("{}", format(&board).unwrap());
-    println!("Elapsed time: {elapsed:?}");
+    for mut board in read_puzzle_file(Path::new(
+        args()
+            .nth(1)
+            .expect("Must pass at least one argument")
+            .as_str(),
+    ))
+    .expect("Error reading puzzle file")
+    {
+        let start = Instant::now();
+        board.solve();
+        let elapsed = start.elapsed();
+        println!("{}", format(&board).unwrap());
+        println!("Elapsed time: {elapsed:?}");
+    }
+}
 
-    let start = Instant::now();
-    let mut board = Board::new(9);
-    board.place_digit(4, Cell { row: 0, col: 5 });
-    board.place_digit(2, Cell { row: 0, col: 7 });
-    board.place_digit(8, Cell { row: 0, col: 8 });
-    board.place_digit(4, Cell { row: 1, col: 0 });
-    board.place_digit(6, Cell { row: 1, col: 2 });
-    board.place_digit(5, Cell { row: 1, col: 8 });
-    board.place_digit(1, Cell { row: 2, col: 0 });
-    board.place_digit(3, Cell { row: 2, col: 4 });
-    board.place_digit(6, Cell { row: 2, col: 6 });
-    board.place_digit(3, Cell { row: 3, col: 3 });
-    board.place_digit(1, Cell { row: 3, col: 5 });
-    board.place_digit(8, Cell { row: 4, col: 1 });
-    board.place_digit(7, Cell { row: 4, col: 2 });
-    board.place_digit(1, Cell { row: 4, col: 6 });
-    board.place_digit(4, Cell { row: 4, col: 7 });
-    board.place_digit(7, Cell { row: 5, col: 3 });
-    board.place_digit(9, Cell { row: 5, col: 5 });
-    board.place_digit(2, Cell { row: 6, col: 2 });
-    board.place_digit(1, Cell { row: 6, col: 4 });
-    board.place_digit(3, Cell { row: 6, col: 8 });
-    board.place_digit(9, Cell { row: 7, col: 0 });
-    board.place_digit(5, Cell { row: 7, col: 6 });
-    board.place_digit(7, Cell { row: 7, col: 8 });
-    board.place_digit(6, Cell { row: 8, col: 0 });
-    board.place_digit(7, Cell { row: 8, col: 1 });
-    board.place_digit(4, Cell { row: 8, col: 3 });
-    board.solve();
-    let elapsed = start.elapsed();
-    println!("{}", format(&board).unwrap());
-    println!("Elapsed time: {elapsed:?}");
+fn read_puzzle_file(path: &Path) -> io::Result<Vec<Board>> {
+    let raw = read_to_string(path)?;
 
-    let start = Instant::now();
-    let mut board = Board::new(9);
-    board.place_digit(7, Cell { row: 0, col: 0 });
-    board.place_digit(2, Cell { row: 0, col: 1 });
-    board.place_digit(9, Cell { row: 0, col: 4 });
-    board.place_digit(6, Cell { row: 0, col: 5 });
-    board.place_digit(3, Cell { row: 0, col: 8 });
-    board.place_digit(2, Cell { row: 1, col: 3 });
-    board.place_digit(5, Cell { row: 1, col: 5 });
-    board.place_digit(8, Cell { row: 2, col: 1 });
-    board.place_digit(4, Cell { row: 2, col: 5 });
-    board.place_digit(2, Cell { row: 2, col: 7 });
-    board.place_digit(6, Cell { row: 3, col: 7 });
-    board.place_digit(1, Cell { row: 4, col: 0 });
-    board.place_digit(6, Cell { row: 4, col: 2 });
-    board.place_digit(5, Cell { row: 4, col: 3 });
-    board.place_digit(3, Cell { row: 4, col: 5 });
-    board.place_digit(8, Cell { row: 4, col: 6 });
-    board.place_digit(7, Cell { row: 4, col: 8 });
-    board.place_digit(4, Cell { row: 5, col: 1 });
-    board.place_digit(3, Cell { row: 6, col: 1 });
-    board.place_digit(8, Cell { row: 6, col: 3 });
-    board.place_digit(9, Cell { row: 6, col: 7 });
-    board.place_digit(7, Cell { row: 7, col: 3 });
-    board.place_digit(2, Cell { row: 7, col: 5 });
-    board.place_digit(2, Cell { row: 8, col: 0 });
-    board.place_digit(4, Cell { row: 8, col: 3 });
-    board.place_digit(3, Cell { row: 8, col: 4 });
-    board.place_digit(1, Cell { row: 8, col: 7 });
-    board.place_digit(8, Cell { row: 8, col: 8 });
-    board.solve();
-    let elapsed = start.elapsed();
-    println!("{}", format(&board).unwrap());
-    println!("Elapsed time: {elapsed:?}");
+    Ok(raw
+        .split("\n\n")
+        .map(|puzzle| {
+            let lines: Vec<_> = puzzle.split('\n').collect();
+            let mut board = Board::new(
+                lines
+                    .first()
+                    .expect("Puzzle does not contain any lines")
+                    .len(),
+            );
 
-    let start = Instant::now();
-    let mut board = Board::new(9);
-    board.place_digit(3, Cell { row: 0, col: 0 });
-    board.place_digit(9, Cell { row: 0, col: 2 });
-    board.place_digit(4, Cell { row: 0, col: 6 });
-    board.place_digit(2, Cell { row: 1, col: 0 });
-    board.place_digit(7, Cell { row: 1, col: 3 });
-    board.place_digit(9, Cell { row: 1, col: 5 });
-    board.place_digit(8, Cell { row: 2, col: 1 });
-    board.place_digit(7, Cell { row: 2, col: 2 });
-    board.place_digit(7, Cell { row: 3, col: 0 });
-    board.place_digit(5, Cell { row: 3, col: 1 });
-    board.place_digit(6, Cell { row: 3, col: 4 });
-    board.place_digit(2, Cell { row: 3, col: 6 });
-    board.place_digit(3, Cell { row: 3, col: 7 });
-    board.place_digit(6, Cell { row: 4, col: 0 });
-    board.place_digit(9, Cell { row: 4, col: 3 });
-    board.place_digit(4, Cell { row: 4, col: 5 });
-    board.place_digit(8, Cell { row: 4, col: 8 });
-    board.place_digit(2, Cell { row: 5, col: 1 });
-    board.place_digit(8, Cell { row: 5, col: 2 });
-    board.place_digit(5, Cell { row: 5, col: 4 });
-    board.place_digit(4, Cell { row: 5, col: 7 });
-    board.place_digit(1, Cell { row: 5, col: 8 });
-    board.place_digit(5, Cell { row: 6, col: 6 });
-    board.place_digit(9, Cell { row: 6, col: 7 });
-    board.place_digit(1, Cell { row: 7, col: 3 });
-    board.place_digit(6, Cell { row: 7, col: 5 });
-    board.place_digit(7, Cell { row: 7, col: 8 });
-    board.place_digit(6, Cell { row: 8, col: 2 });
-    board.place_digit(1, Cell { row: 8, col: 6 });
-    board.place_digit(4, Cell { row: 8, col: 8 });
-    board.solve();
-    let elapsed = start.elapsed();
-    println!("{}", format(&board).unwrap());
-    println!("Elapsed time: {elapsed:?}");
+            for (line, row) in lines.iter().zip(0..) {
+                for (val, col) in line
+                    .chars()
+                    .zip(0..)
+                    .filter_map(|(chr, col)| chr.to_digit(16).map(|d| (d, col)))
+                {
+                    #[allow(clippy::cast_possible_truncation)]
+                    board.place_digit(val as u16, Cell { row, col });
+                }
+            }
 
-    let start = Instant::now();
-    let mut board = Board::new(9);
-    board.place_digit(7, Cell { row: 0, col: 3 });
-    board.place_digit(4, Cell { row: 0, col: 5 });
-    board.place_digit(5, Cell { row: 0, col: 8 });
-    board.place_digit(2, Cell { row: 1, col: 1 });
-    board.place_digit(1, Cell { row: 1, col: 4 });
-    board.place_digit(7, Cell { row: 1, col: 7 });
-    board.place_digit(8, Cell { row: 2, col: 4 });
-    board.place_digit(2, Cell { row: 2, col: 8 });
-    board.place_digit(9, Cell { row: 3, col: 1 });
-    board.place_digit(6, Cell { row: 3, col: 5 });
-    board.place_digit(2, Cell { row: 3, col: 6 });
-    board.place_digit(5, Cell { row: 3, col: 7 });
-    board.place_digit(6, Cell { row: 4, col: 0 });
-    board.place_digit(7, Cell { row: 4, col: 4 });
-    board.place_digit(8, Cell { row: 4, col: 8 });
-    board.place_digit(5, Cell { row: 5, col: 1 });
-    board.place_digit(3, Cell { row: 5, col: 2 });
-    board.place_digit(2, Cell { row: 5, col: 3 });
-    board.place_digit(1, Cell { row: 5, col: 7 });
-    board.place_digit(4, Cell { row: 6, col: 0 });
-    board.place_digit(9, Cell { row: 6, col: 4 });
-    board.place_digit(3, Cell { row: 7, col: 1 });
-    board.place_digit(6, Cell { row: 7, col: 4 });
-    board.place_digit(9, Cell { row: 7, col: 7 });
-    board.place_digit(2, Cell { row: 8, col: 0 });
-    board.place_digit(4, Cell { row: 8, col: 3 });
-    board.place_digit(7, Cell { row: 8, col: 5 });
-    board.solve();
-    let elapsed = start.elapsed();
-    println!("{}", format(&board).unwrap());
-    println!("Elapsed time: {elapsed:?}");
+            board
+        })
+        .collect())
 }
