@@ -1,3 +1,5 @@
+use std::cmp::{max, min};
+
 use crate::{
     board::{get_regions_with_cells, Board, Cell},
     misc::{cells, is_set},
@@ -12,9 +14,16 @@ struct Colouring<'a> {
 #[derive(Debug, Clone)]
 struct ColourNode {
     cell: Cell,
-    possible: u16,
-    state: u16,
-    connects_to: Vec<(usize, Option<u16>)>,
+    val: u16,
+    state: State,
+    connects_to: Vec<(usize, bool)>, // if true, this or the connected must be true, else both can be false
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum State {
+    None,
+    True,
+    False,
 }
 
 #[derive(Debug, Clone)]
@@ -95,8 +104,6 @@ pub fn from_board(board: &Board) -> ColourMap {
     colouring.dedup();
     colouring.connect();
 
-    dbg!(&colouring);
-
     let possible = colouring.get_possible_colourings();
 
     let mut placed = vec![];
@@ -109,12 +116,23 @@ pub fn from_board(board: &Board) -> ColourMap {
         }
     }
 
-    dbg!(&placed);
+    let eliminated: Vec<_> = cells
+        .iter()
+        .flat_map(|c| {
+            (0..9)
+                .filter(|v| is_set!(board.get_cell(c).unwrap(), v))
+                .map(move |v| (*c, v))
+        })
+        .filter(|(c, v)| {
+            possible.iter().all(|possibility| {
+                possibility.iter().any(|(other_c, other_v)| {
+                    c != other_c && v == other_v && c.can_see(board, other_c)
+                })
+            })
+        })
+        .collect();
 
-    ColourMap {
-        eliminated: vec![],
-        placed,
-    }
+    ColourMap { eliminated, placed }
 }
 
 impl Colouring<'_> {
@@ -126,34 +144,37 @@ impl Colouring<'_> {
     }
 
     fn add_cell(&mut self, cell: Cell, possible: u16) {
+        let vals = get_possible_pair(possible);
         self.nodes.push(ColourNode {
             cell,
-            possible,
-            state: possible,
+            val: vals.0,
+            state: State::None,
+            connects_to: vec![],
+        });
+        self.nodes.push(ColourNode {
+            cell,
+            val: vals.1,
+            state: State::None,
             connects_to: vec![],
         });
     }
 
-    fn add_pair(&mut self, cell_a: Cell, cell_b: Cell, value: u16) {
-        let possible_a = self.board.get_cell(&cell_a);
-        let possible_b = self.board.get_cell(&cell_b);
+    fn add_pair(&mut self, cell_a: Cell, cell_b: Cell, val: u16) {
         let len = self.nodes.len();
 
-        if let (Some(pa), Some(pb)) = (possible_a, possible_b) {
-            self.nodes.push(ColourNode {
-                cell: cell_a,
-                possible: pa,
-                state: pa,
-                connects_to: vec![(len + 1, Some(value))],
-            });
+        self.nodes.push(ColourNode {
+            cell: cell_a,
+            val,
+            state: State::None,
+            connects_to: vec![(len + 1, true)],
+        });
 
-            self.nodes.push(ColourNode {
-                cell: cell_b,
-                possible: pb,
-                state: pb,
-                connects_to: vec![(len, Some(value))],
-            });
-        }
+        self.nodes.push(ColourNode {
+            cell: cell_b,
+            val,
+            state: State::None,
+            connects_to: vec![(len, true)],
+        });
     }
 
     fn dedup(&mut self) {
@@ -161,7 +182,10 @@ impl Colouring<'_> {
 
         for i in 0..self.nodes.len() {
             let node = self.nodes.get_mut(i).unwrap();
-            if let Some(same_i) = new.iter().position(|(_, n)| n.cell == node.cell) {
+            if let Some(same_i) = new
+                .iter()
+                .position(|(_, n)| n.cell == node.cell && n.val == node.val)
+            {
                 let same = new.get_mut(same_i).unwrap();
 
                 same.1.connects_to.append(&mut node.connects_to);
@@ -188,7 +212,7 @@ impl Colouring<'_> {
 
             self.nodes.push(ColourNode {
                 cell: node.cell,
-                possible: node.possible,
+                val: node.val,
                 state: node.state,
                 connects_to: new_connections,
             });
@@ -200,53 +224,40 @@ impl Colouring<'_> {
             .zip(1..)
             .flat_map(|(a, i)| (i..self.nodes.len()).map(move |b| (a, b)))
             .collect();
-        for (n1, n2) in pairs {
-            if self.nodes[n1]
-                .cell
-                .can_see(self.board, &self.nodes[n2].cell)
-                && self.nodes[n1].possible & self.nodes[n2].possible > 0
-            {
-                self.nodes.get_mut(n1).unwrap().connects_to.push((n2, None));
-                self.nodes.get_mut(n2).unwrap().connects_to.push((n1, None));
+        for (i1, i2) in pairs {
+            if let Some((n1, n2)) = get_mut_pair(&mut self.nodes, (i1, i2)) {
+                if (n1.cell == n2.cell)
+                    || (n1.val == n2.val && n1.cell.can_see(self.board, &n2.cell))
+                {
+                    n1.connects_to.push((i2, false));
+                    n2.connects_to.push((i1, false));
+                }
             }
         }
     }
 
-    fn clear_state(&mut self) {
-        for node in &mut self.nodes {
-            node.state = node.possible;
+    fn colour(&mut self, node: usize, state: State) -> bool {
+        if state == State::None {
+            return true;
         }
-    }
-
-    fn colour(&mut self, node: usize, val: u16) -> bool {
         let cascade = if let Some(node) = self.nodes.get_mut(node) {
-            if node.state.count_ones() > 1 {
-                node.state = 1 << val;
+            if node.state == State::None {
+                node.state = state;
                 node.connects_to.clone()
             } else {
-                return node.state == 1 << val;
+                return node.state == state;
             }
         } else {
             return false;
         };
 
-        cascade.iter().all(|(other, maybe_pair)| {
-            if let Some(p_val) = maybe_pair {
-                if val == *p_val {
-                    true
-                } else {
-                    self.colour(*other, *p_val)
-                }
+        cascade.iter().all(|(other, is_pair)| {
+            if state == State::True {
+                self.colour(*other, State::False)
+            } else if *is_pair && state == State::False {
+                self.colour(*other, State::True)
             } else {
-                let other_node = self.nodes.get_mut(*other).unwrap();
-                if other_node.state.count_ones() == 2 && is_set!(other_node.state, val) {
-                    #[allow(clippy::cast_possible_truncation)]
-                    let new_state = (other_node.state & !(1 << val)).trailing_zeros() as u16;
-                    self.colour(*other, new_state)
-                } else {
-                    other_node.state &= !(1 << val);
-                    true
-                }
+                true
             }
         })
     }
@@ -254,21 +265,16 @@ impl Colouring<'_> {
     fn get_possible_colourings(&self) -> Vec<Vec<(Cell, u16)>> {
         let mut out = vec![];
 
-        if let Some(first) = self
-            .nodes
-            .iter()
-            .position(|node| node.state.count_ones() > 1)
-        {
+        if let Some(first) = self.nodes.iter().position(|node| node.state == State::None) {
             let mut tmp;
-            let pair = get_possible_pair(self.nodes[first].state);
 
             tmp = self.clone();
-            if tmp.colour(first, pair.0) {
+            if tmp.colour(first, State::True) {
                 out.append(&mut tmp.get_possible_colourings());
             }
 
             tmp = self.clone();
-            if tmp.colour(first, pair.1) {
+            if tmp.colour(first, State::False) {
                 out.append(&mut tmp.get_possible_colourings());
             }
         } else {
@@ -282,8 +288,8 @@ impl Colouring<'_> {
         #[allow(clippy::cast_possible_truncation)]
         self.nodes
             .iter()
-            .filter(|n| n.state.count_ones() == 1)
-            .map(|n| (n.cell, n.state.trailing_zeros() as u16))
+            .filter(|n| n.state == State::True)
+            .map(|n| (n.cell, n.val))
             .collect()
     }
 }
@@ -292,4 +298,20 @@ impl Colouring<'_> {
 fn get_possible_pair(val: u16) -> (u16, u16) {
     let val1 = val.trailing_zeros() as u16;
     (val1, (val >> (val1 + 1)).trailing_zeros() as u16 + val1 + 1)
+}
+
+fn get_mut_pair<T>(slice: &mut [T], index: (usize, usize)) -> Option<(&mut T, &mut T)> {
+    if index.0 == index.1 {
+        None
+    } else {
+        let (first, second) = (min(index.0, index.1), max(index.0, index.1));
+        let (_, tmp) = slice.split_at_mut(first);
+        let (x, rest) = tmp.split_at_mut(1);
+        let (_, y) = rest.split_at_mut(second - first - 1);
+        Some(if index.0 < index.1 {
+            (&mut x[0], &mut y[0])
+        } else {
+            (&mut y[0], &mut x[0])
+        })
+    }
 }

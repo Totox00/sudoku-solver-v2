@@ -1,4 +1,5 @@
 use crate::{
+    colouring,
     defaults::{default_cell, default_regions},
     groups, intersections,
     misc::is_set,
@@ -50,6 +51,7 @@ impl Board {
         self.clean_xwings();
         self.clean_ywings();
         self.clean_intersections();
+        self.clean_colouring();
     }
 
     pub fn new_custom_regions(size: usize, regions: Vec<Region>) -> Self {
@@ -334,6 +336,24 @@ impl Board {
         if has_changed {
             self.solve();
         }
+    }
+
+    pub fn clean_colouring(&mut self) {
+        let colour_map = colouring::from_board(self);
+
+        if colour_map.eliminated.is_empty() && colour_map.placed.is_empty() {
+            return;
+        }
+
+        for (cell, val) in colour_map.placed {
+            self.place_digit(val, cell);
+        }
+
+        for (cell, val) in colour_map.eliminated {
+            self.clean_cell(cell, val);
+        }
+
+        self.solve();
     }
 }
 

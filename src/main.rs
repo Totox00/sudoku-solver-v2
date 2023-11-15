@@ -189,6 +189,4 @@ fn main() {
     let elapsed = start.elapsed();
     println!("{}", format(&board).unwrap());
     println!("Elapsed time: {elapsed:?}");
-
-    colouring::from_board(&board);
 }
