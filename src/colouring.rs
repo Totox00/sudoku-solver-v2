@@ -147,19 +147,42 @@ impl Colouring<'_> {
     }
 
     fn dedup(&mut self) {
-        let mut new: Vec<ColourNode> = vec![];
+        let mut new: Vec<(Vec<usize>, ColourNode)> = vec![];
 
-        for node in &mut self.nodes {
-            if let Some(i) = new.iter().position(|n| n.cell == node.cell) {
-                let same = new.get_mut(i).unwrap();
+        for i in 0..self.nodes.len() {
+            let node = self.nodes.get_mut(i).unwrap();
+            if let Some(same_i) = new.iter().position(|(_, n)| n.cell == node.cell) {
+                let same = new.get_mut(same_i).unwrap();
 
-                same.connects_to.append(&mut node.connects_to);
+                same.1.connects_to.append(&mut node.connects_to);
+                same.0.push(i);
             } else {
-                new.push(node.clone());
+                new.push((vec![i], node.clone()));
             }
         }
 
-        self.nodes = new;
+        self.nodes = vec![];
+        for (_, node) in &new {
+            let new_connections: Vec<_> = node
+                .connects_to
+                .iter()
+                .map(|(i, connection)| {
+                    (
+                        new.iter()
+                            .position(|(old_i, _)| old_i.contains(&i))
+                            .unwrap(),
+                        *connection,
+                    )
+                })
+                .collect();
+
+            self.nodes.push(ColourNode {
+                cell: node.cell,
+                possible: node.possible,
+                state: node.state,
+                connects_to: new_connections,
+            });
+        }
     }
 
     fn connect(&mut self) {
@@ -186,7 +209,6 @@ impl Colouring<'_> {
     }
 
     fn colour(&mut self, node: usize, val: u16) -> bool {
-        dbg!(val);
         let cascade = if let Some(node) = self.nodes.get_mut(node) {
             if node.state.count_ones() > 1 {
                 node.state = 1 << val;
