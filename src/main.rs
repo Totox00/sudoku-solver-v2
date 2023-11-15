@@ -35,7 +35,14 @@ fn main() {
 fn read_puzzle_file(path: &Path) -> io::Result<Vec<Board>> {
     let raw = read_to_string(path)?;
 
-    Ok(raw
+    let data = if let Some(data) = raw.split_once("END") {
+        data.0
+    } else {
+        &raw
+    };
+
+    Ok(data
+        .trim()
         .split("\n\n")
         .map(|puzzle| {
             let lines: Vec<_> = puzzle.split('\n').collect();
