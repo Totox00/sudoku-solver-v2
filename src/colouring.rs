@@ -95,15 +95,25 @@ pub fn from_board(board: &Board) -> ColourMap {
     colouring.dedup();
     colouring.connect();
 
+    dbg!(&colouring);
+
     let possible = colouring.get_possible_colourings();
 
-    dbg!(&possible.len());
+    let mut placed = vec![];
+    for cell in &possible[0] {
+        if possible[1..]
+            .iter()
+            .all(|placement| placement.contains(cell))
+        {
+            placed.push(*cell);
+        }
+    }
 
-    colouring.clear_state();
+    dbg!(&placed);
 
     ColourMap {
         eliminated: vec![],
-        placed: vec![],
+        placed,
     }
 }
 
