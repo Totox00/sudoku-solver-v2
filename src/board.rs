@@ -1,4 +1,7 @@
-use std::ops::{Index, IndexMut};
+use std::{
+    ops::{Index, IndexMut},
+    rc::Rc,
+};
 
 use crate::{
     colouring,
@@ -49,9 +52,10 @@ impl Board {
     pub fn solve(&mut self) {
         self.place_hidden_single();
         self.clean_groups();
-        self.clean_xwings();
+        self.clean_xwings2();
         self.clean_ywings();
         self.clean_intersections();
+        self.clean_xwings3();
         self.clean_colouring();
     }
 
@@ -236,28 +240,24 @@ impl Board {
 
         let mut has_changed = false;
         for group in groups.iter() {
-            let vals: Vec<_> = (0..SIZE)
-                .filter_map(|d| {
-                    if is_set!(group.vals, d) {
-                        #[allow(clippy::cast_possible_truncation)]
-                        Some(d as u16)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
-            for val in vals {
+            for val in (0..=SIZE).filter_map(|d| {
+                if is_set!(group.vals, d) {
+                    #[allow(clippy::cast_possible_truncation)]
+                    Some(d as u16)
+                } else {
+                    None
+                }
+            }) {
                 if group.relation.row {
                     has_changed = self.clean_row(
                         group.cells[0].row,
-                        &group.cells.iter().map(|cell| cell.col).collect::<Vec<_>>()[..],
+                        &group.cells.iter().map(|cell| cell.col).collect::<Rc<[_]>>()[..],
                         val,
                     ) || has_changed;
                 } else if group.relation.col {
                     has_changed = self.clean_col(
                         group.cells[0].col,
-                        &group.cells.iter().map(|cell| cell.row).collect::<Vec<_>>()[..],
+                        &group.cells.iter().map(|cell| cell.row).collect::<Rc<[_]>>()[..],
                         val,
                     ) || has_changed;
                 }
@@ -272,8 +272,29 @@ impl Board {
         }
     }
 
-    pub fn clean_xwings(&mut self) {
-        let xwings = xwings::from_board(self);
+    pub fn clean_xwings2(&mut self) {
+        let xwings = xwings::from_board2(self);
+
+        let mut has_changed = false;
+        for xwing in xwings.iter() {
+            if xwing.clear_rows {
+                for row in xwing.rows {
+                    has_changed = self.clean_row(row, &xwing.cols, xwing.val) || has_changed;
+                }
+            } else {
+                for col in xwing.cols {
+                    has_changed = self.clean_col(col, &xwing.rows, xwing.val) || has_changed;
+                }
+            }
+        }
+
+        if has_changed {
+            self.solve();
+        }
+    }
+
+    pub fn clean_xwings3(&mut self) {
+        let xwings = xwings::from_board3(self);
 
         let mut has_changed = false;
         for xwing in xwings.iter() {
