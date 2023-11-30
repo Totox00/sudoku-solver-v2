@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use crate::board::{Board, Cell, Region};
+use crate::{
+    board::{Board, Cell, Region},
+    SIZE,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Unit<'a> {
@@ -14,14 +17,14 @@ pub fn units(board: &Board) -> Rc<[Unit]> {
         .regions
         .iter()
         .map(Unit::Reg)
-        .chain((0..board.size).map(Unit::Row))
-        .chain((0..board.size).map(Unit::Col))
+        .chain((0..SIZE).map(Unit::Row))
+        .chain((0..SIZE).map(Unit::Col))
         .collect()
 }
 
-pub fn cells(board: &Board) -> Rc<[Cell]> {
-    (0..board.size)
-        .flat_map(|row| (0..board.size).map(move |col| Cell { row, col }))
+pub fn cells() -> Rc<[Cell]> {
+    (0..SIZE)
+        .flat_map(|row| (0..SIZE).map(move |col| Cell { row, col }))
         .collect()
 }
 

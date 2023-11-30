@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     board::{Board, Cell},
-    misc::is_set,
+    misc::is_set, SIZE,
 };
 
 #[derive(Debug)]
@@ -14,15 +14,13 @@ pub struct YWing {
 }
 
 pub fn from_board(board: &Board) -> Rc<[YWing]> {
-    let size = board.size;
-
-    let cells: Vec<_> = (0..size)
-        .flat_map(|row| (0..size).map(move |col| Cell { row, col }))
+    let cells: Vec<_> = (0..SIZE)
+        .flat_map(|row| (0..SIZE).map(move |col| Cell { row, col }))
         .collect();
 
-    let useful_cells: Vec<_> = (0..size)
+    let useful_cells: Vec<_> = (0..SIZE)
         .flat_map(|row| {
-            (0..size).map(move |col| {
+            (0..SIZE).map(move |col| {
                 if let Some(vals) = board.get_cell_coords(row, col) {
                     if vals.count_ones() == 2 {
                         Some(Cell { row, col })
@@ -36,11 +34,11 @@ pub fn from_board(board: &Board) -> Rc<[YWing]> {
         })
         .map(|group| {
             group.unwrap_or(Cell {
-                row: size,
-                col: size,
+                row: SIZE,
+                col: SIZE,
             })
         })
-        .filter(|cell| cell.row != size)
+        .filter(|cell| cell.row != SIZE)
         .collect();
 
     useful_cells[..]

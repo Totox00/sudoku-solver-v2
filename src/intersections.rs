@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     board::{Board, Cell, Region},
-    misc::{is_set, units, Unit},
+    misc::{is_set, units, Unit}, SIZE,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -19,7 +19,6 @@ pub struct IntersectionTarget {
 }
 
 pub fn from_board(board: &Board) -> Rc<[IntersectionTarget]> {
-    let size = board.size;
     let units = units(board);
 
     units
@@ -39,7 +38,7 @@ pub fn from_board(board: &Board) -> Rc<[IntersectionTarget]> {
         })
         .flat_map(|intersection| {
             #[allow(clippy::cast_possible_truncation)]
-            (1..=size)
+            (1..=SIZE)
                 .map(move |val| Intersection {
                     origin: intersection.origin,
                     target: intersection.target,
@@ -53,13 +52,13 @@ pub fn from_board(board: &Board) -> Rc<[IntersectionTarget]> {
 impl Intersection<'_> {
     fn is_valid(&self, board: &Board) -> Option<IntersectionTarget> {
         let origin_cells: Region = match self.origin {
-            Unit::Row(row) => (0..board.size).map(|col| Cell { row, col }).collect(),
-            Unit::Col(col) => (0..board.size).map(|row| Cell { row, col }).collect(),
+            Unit::Row(row) => (0..SIZE).map(|col| Cell { row, col }).collect(),
+            Unit::Col(col) => (0..SIZE).map(|row| Cell { row, col }).collect(),
             Unit::Reg(reg) => reg.clone(),
         };
         let target_cells: Region = match self.target {
-            Unit::Row(row) => (0..board.size).map(|col| Cell { row, col }).collect(),
-            Unit::Col(col) => (0..board.size).map(|row| Cell { row, col }).collect(),
+            Unit::Row(row) => (0..SIZE).map(|col| Cell { row, col }).collect(),
+            Unit::Col(col) => (0..SIZE).map(|row| Cell { row, col }).collect(),
             Unit::Reg(reg) => reg.clone(),
         };
 

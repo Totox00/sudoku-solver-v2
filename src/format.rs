@@ -1,7 +1,7 @@
 use crate::{board::Board, defaults::default_region_bounds};
 
 pub fn format(board: &Board) -> Option<String> {
-    let (rwidth, rheight) = default_region_bounds(board.size);
+    let (rwidth, rheight) = default_region_bounds();
     let mut out = String::new();
     out.push('╔');
     for i in 0..rheight {

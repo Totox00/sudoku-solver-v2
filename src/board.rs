@@ -3,14 +3,13 @@ use crate::{
     defaults::{default_cell, default_regions},
     groups, intersections,
     misc::is_set,
-    xwings, ywings,
+    xwings, ywings, SIZE,
 };
 
 #[derive(Debug, Clone)]
 pub struct Board {
-    pub size: usize,
     pub regions: Vec<Region>,
-    pub cells: Vec<Vec<u16>>,
+    pub cells: [[u16; SIZE]; SIZE],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -54,19 +53,17 @@ impl Board {
         self.clean_colouring();
     }
 
-    pub fn new_custom_regions(size: usize, regions: Vec<Region>) -> Self {
+    pub fn new_custom_regions(regions: Vec<Region>) -> Self {
         Board {
-            size,
             regions,
-            cells: vec![vec![default_cell(size); size]; size],
+            cells: [[default_cell(); SIZE]; SIZE],
         }
     }
 
-    pub fn new(size: usize) -> Self {
+    pub fn new() -> Self {
         Board {
-            size,
-            regions: default_regions(size),
-            cells: vec![vec![default_cell(size); size]; size],
+            regions: default_regions(),
+            cells: [[default_cell(); SIZE]; SIZE],
         }
     }
 
@@ -96,7 +93,7 @@ impl Board {
 
     pub fn clean_row(&mut self, row: usize, ignore: &[usize], val: u16) -> bool {
         let mut has_changed = false;
-        for i in 0..self.size {
+        for i in 0..SIZE {
             if ignore.contains(&i) {
                 continue;
             }
@@ -109,7 +106,7 @@ impl Board {
 
     pub fn clean_col(&mut self, col: usize, ignore: &[usize], val: u16) -> bool {
         let mut has_changed = false;
-        for i in 0..self.size {
+        for i in 0..SIZE {
             if ignore.contains(&i) {
                 continue;
             }
@@ -159,7 +156,7 @@ impl Board {
     }
 
     pub fn place_hidden_single(&mut self) {
-        let size = self.size;
+        let size = SIZE;
         for cell in (0..size).flat_map(|row| (0..size).map(move |col| Cell { row, col })) {
             if self.place_if_hidden_single(cell).is_some() {
                 return self.solve();
@@ -174,20 +171,19 @@ impl Board {
         let single = {
             let cell_val = self.get_cell(&cell)?;
             let in_row = self.get_row_nums(cell.row, &[cell.col])?;
-            let possible =
-                (0..self.size).find(|val| is_set!(cell_val, val) && !is_set!(in_row, val));
+            let possible = (0..SIZE).find(|val| is_set!(cell_val, val) && !is_set!(in_row, val));
             if possible.is_some() {
                 possible
             } else {
                 let in_col = self.get_col_nums(cell.col, &[cell.row])?;
                 let possible =
-                    (0..self.size).find(|val| is_set!(cell_val, val) && !is_set!(in_col, val));
+                    (0..SIZE).find(|val| is_set!(cell_val, val) && !is_set!(in_col, val));
                 if possible.is_some() {
                     possible
                 } else {
                     let in_reg = self.get_reg_nums(cell, &[cell])?;
                     let possible =
-                        (0..self.size).find(|val| is_set!(cell_val, val) && !is_set!(in_reg, val));
+                        (0..SIZE).find(|val| is_set!(cell_val, val) && !is_set!(in_reg, val));
                     if possible.is_some() {
                         possible
                     } else {
@@ -246,7 +242,7 @@ impl Board {
 
         let mut has_changed = false;
         for group in groups.iter() {
-            let vals: Vec<_> = (0..self.size)
+            let vals: Vec<_> = (0..SIZE)
                 .filter_map(|d| {
                     if is_set!(group.vals, d) {
                         #[allow(clippy::cast_possible_truncation)]
@@ -288,19 +284,13 @@ impl Board {
         let mut has_changed = false;
         for xwing in xwings.iter() {
             if xwing.clear_rows {
-                has_changed =
-                    self.clean_row(xwing.rows.0, &[xwing.cols.0, xwing.cols.1], xwing.val)
-                        || has_changed;
-                has_changed =
-                    self.clean_row(xwing.rows.1, &[xwing.cols.0, xwing.cols.1], xwing.val)
-                        || has_changed;
+                for row in xwing.rows {
+                    has_changed = self.clean_row(row, &xwing.cols, xwing.val) || has_changed;
+                }
             } else {
-                has_changed =
-                    self.clean_col(xwing.cols.0, &[xwing.rows.0, xwing.rows.1], xwing.val)
-                        || has_changed;
-                has_changed =
-                    self.clean_col(xwing.cols.1, &[xwing.rows.0, xwing.rows.1], xwing.val)
-                        || has_changed;
+                for col in xwing.cols {
+                    has_changed = self.clean_col(col, &xwing.rows, xwing.val) || has_changed;
+                }
             }
         }
 

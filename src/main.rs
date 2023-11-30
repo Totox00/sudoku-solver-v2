@@ -15,6 +15,8 @@ mod misc;
 mod xwings;
 mod ywings;
 
+const SIZE: usize = 9;
+
 fn main() {
     for mut board in read_puzzle_file(Path::new(
         args()
@@ -46,12 +48,7 @@ fn read_puzzle_file(path: &Path) -> io::Result<Vec<Board>> {
         .split("\n\n")
         .map(|puzzle| {
             let lines: Vec<_> = puzzle.split('\n').collect();
-            let mut board = Board::new(
-                lines
-                    .first()
-                    .expect("Puzzle does not contain any lines")
-                    .len(),
-            );
+            let mut board = Board::new();
 
             for (line, row) in lines.iter().zip(0..) {
                 for (val, col) in line

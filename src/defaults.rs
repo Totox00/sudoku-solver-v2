@@ -1,7 +1,10 @@
-use crate::board::{Cell, Region};
+use crate::{
+    board::{Cell, Region},
+    SIZE,
+};
 
-pub const fn default_cell(size: usize) -> u16 {
-    match size {
+pub const fn default_cell() -> u16 {
+    match SIZE {
         4 => 0b1_1110,
         6 => 0b111_1110,
         9 => 0b11_1111_1110,
@@ -9,8 +12,8 @@ pub const fn default_cell(size: usize) -> u16 {
     }
 }
 
-pub fn default_regions(size: usize) -> Vec<Region> {
-    let out: Vec<Region> = match size {
+pub fn default_regions() -> Vec<Region> {
+    let out: Vec<Region> = match SIZE {
         4 => calc_region(2, 2),
         6 => calc_region(3, 2),
         9 => calc_region(3, 3),
@@ -48,8 +51,8 @@ fn calc_region_contents(
         .collect()
 }
 
-pub fn default_region_bounds(size: usize) -> (usize, usize) {
-    match size {
+pub fn default_region_bounds() -> (usize, usize) {
+    match SIZE {
         4 => (2, 2),
         6 => (3, 2),
         9 => (3, 3),

@@ -3,6 +3,7 @@ use std::cmp::{max, min};
 use crate::{
     board::{get_regions_with_cells, Board, Cell},
     misc::{cells, is_set},
+    SIZE,
 };
 
 #[derive(Debug, Clone)]
@@ -34,7 +35,7 @@ pub struct ColourMap {
 
 pub fn from_board(board: &Board) -> ColourMap {
     let mut colouring = Colouring::new(board);
-    let cells = cells(board);
+    let cells = cells();
 
     for cell in cells.iter() {
         if let Some(val) = board.get_cell(cell) {
@@ -53,13 +54,13 @@ pub fn from_board(board: &Board) -> ColourMap {
             let mut is_added = 0;
             if pair.0.row == pair.1.row {
                 let mut others = 0;
-                for col in 0..board.size {
+                for col in 0..SIZE {
                     if col != pair.0.col && col != pair.1.col {
                         others |= board.get_cell_coords(pair.0.row, col).unwrap();
                     }
                 }
                 let overlap = a & b;
-                for d in 1..=board.size {
+                for d in 1..=SIZE {
                     if overlap & 1 << d > 0 && others & 1 << d == 0 {
                         #[allow(clippy::cast_possible_truncation)]
                         colouring.add_pair(*pair.0, *pair.1, d as u16);
@@ -68,13 +69,13 @@ pub fn from_board(board: &Board) -> ColourMap {
                 }
             } else if pair.0.col == pair.1.col {
                 let mut others = 0;
-                for row in 0..board.size {
+                for row in 0..SIZE {
                     if row != pair.0.row && row != pair.1.row {
                         others |= board.get_cell_coords(row, pair.0.col).unwrap();
                     }
                 }
                 let overlap = a & b;
-                for d in 1..=board.size {
+                for d in 1..=SIZE {
                     if is_added & 1 << d == 0 && overlap & 1 << d > 0 && others & 1 << d == 0 {
                         #[allow(clippy::cast_possible_truncation)]
                         colouring.add_pair(*pair.0, *pair.1, d as u16);
@@ -90,7 +91,7 @@ pub fn from_board(board: &Board) -> ColourMap {
                     }
                 }
                 let overlap = a & b;
-                for d in 1..=board.size {
+                for d in 1..=SIZE {
                     if is_added & 1 << d == 0 && overlap & 1 << d > 0 && others & 1 << d == 0 {
                         #[allow(clippy::cast_possible_truncation)]
                         colouring.add_pair(*pair.0, *pair.1, d as u16);
@@ -202,9 +203,7 @@ impl Colouring<'_> {
                 .iter()
                 .map(|(i, connection)| {
                     (
-                        new.iter()
-                            .position(|(old_i, _)| old_i.contains(i))
-                            .unwrap(),
+                        new.iter().position(|(old_i, _)| old_i.contains(i)).unwrap(),
                         *connection,
                     )
                 })

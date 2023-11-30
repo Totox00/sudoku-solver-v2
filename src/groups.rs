@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::board::{get_regions_with_cells, Board, Cell};
+use crate::{board::{get_regions_with_cells, Board, Cell}, SIZE};
 
 #[derive(Debug, Clone)]
 pub struct Group {
@@ -48,11 +48,9 @@ macro_rules! expand_group {
 }
 
 pub fn from_board(board: &Board) -> Rc<[Group]> {
-    let size = board.size;
-
-    let groups: Vec<_> = (0..size)
+    let groups: Vec<_> = (0..SIZE)
         .flat_map(|row| {
-            (0..size).map(move |col| {
+            (0..SIZE).map(move |col| {
                 if let Some(vals) = board.get_cell_coords(row, col) {
                     if vals.count_ones() > 1 {
                         Some(Group {
