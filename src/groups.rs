@@ -3,7 +3,10 @@ use std::{
     rc::Rc,
 };
 
-use crate::{board::{get_regions_with_cells, Board, Cell}, SIZE};
+use crate::{
+    board::{get_regions_with_cells, Board, Cell},
+    misc::cells,
+};
 
 #[derive(Debug, Clone)]
 pub struct Group {
@@ -48,40 +51,24 @@ macro_rules! expand_group {
 }
 
 pub fn from_board(board: &Board) -> Rc<[Group]> {
-    let groups: Vec<_> = (0..SIZE)
-        .flat_map(|row| {
-            (0..SIZE).map(move |col| {
-                if let Some(vals) = board.get_cell_coords(row, col) {
-                    if vals.count_ones() > 1 {
-                        Some(Group {
-                            relation: Relation {
-                                row: true,
-                                col: true,
-                                reg: true,
-                            },
-                            cells: vec![Cell { row, col }],
-                            vals,
-                        })
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
+    let groups: Vec<_> = cells()
+        .iter()
+        .filter_map(|cell| {
+            let vals = board[*cell];
+            if vals.count_ones() > 1 {
+                Some(Group {
+                    relation: Relation {
+                        row: true,
+                        col: true,
+                        reg: true,
+                    },
+                    cells: vec![*cell],
+                    vals,
+                })
+            } else {
+                None
+            }
         })
-        .map(|group| {
-            group.unwrap_or(Group {
-                relation: Relation {
-                    row: true,
-                    col: true,
-                    reg: true,
-                },
-                cells: vec![],
-                vals: 0,
-            })
-        })
-        .filter(|group| !group.cells.is_empty())
         .collect();
 
     finish_group!(init_group!(groups), groups, board, 2)
