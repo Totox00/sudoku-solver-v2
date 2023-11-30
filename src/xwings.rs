@@ -3,14 +3,22 @@ use std::rc::Rc;
 use crate::{board::Board, defaults::default_cell, misc::is_set, SIZE};
 
 #[derive(Debug, Clone, Copy)]
-pub struct XWing {
+pub struct XWing2 {
     pub clear_rows: bool,
     pub rows: [usize; 2],
     pub cols: [usize; 2],
     pub val: u16,
 }
 
-pub fn from_board(board: &Board) -> Rc<[XWing]> {
+#[derive(Debug, Clone, Copy)]
+pub struct XWing3 {
+    pub clear_rows: bool,
+    pub rows: [usize; 3],
+    pub cols: [usize; 3],
+    pub val: u16,
+}
+
+pub fn from_board(board: &Board) -> Rc<[XWing2]> {
     let pairs: Vec<_> = (0..SIZE)
         .zip(1..)
         .flat_map(|(a, i)| (i..SIZE).map(move |b| [a, b]))
@@ -21,13 +29,13 @@ pub fn from_board(board: &Board) -> Rc<[XWing]> {
         .flat_map(|a| pairs[..].iter().map(move |b| (a, b)))
         .flat_map(|(rows, cols)| {
             [
-                XWing {
+                XWing2 {
                     clear_rows: false,
                     rows: *rows,
                     cols: *cols,
                     val: 0,
                 },
-                XWing {
+                XWing2 {
                     clear_rows: true,
                     rows: *rows,
                     cols: *cols,
@@ -52,7 +60,7 @@ pub fn from_board(board: &Board) -> Rc<[XWing]> {
             (1..=SIZE).filter_map(move |d| {
                 if is_set!(v, d) {
                     #[allow(clippy::cast_possible_truncation)]
-                    Some(XWing {
+                    Some(XWing2 {
                         clear_rows: xwing.clear_rows,
                         rows: xwing.rows,
                         cols: xwing.cols,

@@ -2,7 +2,8 @@ use std::rc::Rc;
 
 use crate::{
     board::{Board, Cell, Region},
-    misc::{is_set, units, Unit}, SIZE,
+    misc::{is_set, units, Unit},
+    SIZE,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -67,12 +68,10 @@ impl Intersection<'_> {
             .filter(|cell| target_cells.contains(cell))
             .collect();
 
-        if overlap
-            .iter()
-            .all(|cell| board.get_cell(cell).unwrap().count_ones() > 1)
-            && origin_cells.iter().all(|cell| {
-                overlap.contains(&cell) || !is_set!(board.get_cell(cell).unwrap(), self.val)
-            })
+        if overlap.iter().all(|cell| board[**cell].count_ones() > 1)
+            && origin_cells
+                .iter()
+                .all(|cell| overlap.contains(&cell) || !is_set!(board[*cell], self.val))
         {
             Some(IntersectionTarget {
                 cells: target_cells

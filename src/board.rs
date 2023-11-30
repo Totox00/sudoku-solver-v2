@@ -1,3 +1,5 @@
+use std::ops::{Index, IndexMut};
+
 use crate::{
     colouring,
     defaults::{default_cell, default_regions},
@@ -67,16 +69,8 @@ impl Board {
         }
     }
 
-    pub fn get_cell(&self, cell: &Cell) -> Option<u16> {
-        self.cells.get(cell.row)?.get(cell.col).copied()
-    }
-
     pub fn get_cell_coords(&self, row: usize, col: usize) -> Option<u16> {
         self.cells.get(row)?.get(col).copied()
-    }
-
-    pub fn get_mut_cell(&mut self, cell: &Cell) -> Option<&mut u16> {
-        self.cells.get_mut(cell.row)?.get_mut(cell.col)
     }
 
     pub fn get_mut_cell_coords(&mut self, row: usize, col: usize) -> Option<&mut u16> {
@@ -84,7 +78,7 @@ impl Board {
     }
 
     pub fn place_digit(&mut self, val: u16, cell: Cell) {
-        *self.get_mut_cell(&cell).unwrap() = 1 << val;
+        self[cell] = 1 << val;
 
         self.clean_col(cell.col, &[cell.row], val);
         self.clean_row(cell.row, &[cell.col], val);
@@ -139,7 +133,7 @@ impl Board {
     pub fn clean_cell(&mut self, cell: Cell, val: u16) -> Option<bool> {
         let mut has_changed = false;
         let mut last_val = None;
-        let cell_val = self.get_mut_cell(&cell)?;
+        let cell_val = &mut self[cell];
         assert!(*cell_val != 1 << val, "Cell has no possibilities");
         if is_set!(*cell_val, val) {
             has_changed = true;
@@ -165,11 +159,11 @@ impl Board {
     }
 
     pub fn place_if_hidden_single(&mut self, cell: Cell) -> Anyhow {
-        if self.get_cell(&cell)?.count_ones() == 1 {
+        if self[cell].count_ones() == 1 {
             return None;
         }
         let single = {
-            let cell_val = self.get_cell(&cell)?;
+            let cell_val = self[cell];
             let in_row = self.get_row_nums(cell.row, &[cell.col])?;
             let possible = (0..SIZE).find(|val| is_set!(cell_val, val) && !is_set!(in_row, val));
             if possible.is_some() {
@@ -230,7 +224,7 @@ impl Board {
                 if ignore.contains(cell) {
                     continue;
                 }
-                digits |= self.get_cell(cell)?;
+                digits |= self[*cell];
             }
         }
 
@@ -354,5 +348,19 @@ impl Cell {
             || get_regions_with_cells!(board, &[self, target])
                 .next()
                 .is_some()
+    }
+}
+
+impl Index<Cell> for Board {
+    type Output = u16;
+
+    fn index(&self, index: Cell) -> &Self::Output {
+        &self.cells[index.row][index.col]
+    }
+}
+
+impl IndexMut<Cell> for Board {
+    fn index_mut(&mut self, index: Cell) -> &mut Self::Output {
+        &mut self.cells[index.row][index.col]
     }
 }

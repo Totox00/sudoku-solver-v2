@@ -38,10 +38,9 @@ pub fn from_board(board: &Board) -> ColourMap {
     let cells = cells();
 
     for cell in cells.iter() {
-        if let Some(val) = board.get_cell(cell) {
-            if val.count_ones() == 2 {
-                colouring.add_cell(*cell, val);
-            }
+        let val = board[*cell];
+        if val.count_ones() == 2 {
+            colouring.add_cell(*cell, val);
         }
     }
 
@@ -50,53 +49,49 @@ pub fn from_board(board: &Board) -> ColourMap {
         .zip(1..)
         .flat_map(|(a, i)| cells[i..].iter().map(move |b| (a, b)))
     {
-        if let (Some(a), Some(b)) = (board.get_cell(pair.0), board.get_cell(pair.1)) {
-            let mut is_added = 0;
-            if pair.0.row == pair.1.row {
-                let mut others = 0;
-                for col in 0..SIZE {
-                    if col != pair.0.col && col != pair.1.col {
-                        others |= board.get_cell_coords(pair.0.row, col).unwrap();
-                    }
-                }
-                let overlap = a & b;
-                for d in 1..=SIZE {
-                    if overlap & 1 << d > 0 && others & 1 << d == 0 {
-                        #[allow(clippy::cast_possible_truncation)]
-                        colouring.add_pair(*pair.0, *pair.1, d as u16);
-                        is_added |= 1 << d;
-                    }
-                }
-            } else if pair.0.col == pair.1.col {
-                let mut others = 0;
-                for row in 0..SIZE {
-                    if row != pair.0.row && row != pair.1.row {
-                        others |= board.get_cell_coords(row, pair.0.col).unwrap();
-                    }
-                }
-                let overlap = a & b;
-                for d in 1..=SIZE {
-                    if is_added & 1 << d == 0 && overlap & 1 << d > 0 && others & 1 << d == 0 {
-                        #[allow(clippy::cast_possible_truncation)]
-                        colouring.add_pair(*pair.0, *pair.1, d as u16);
-                        is_added |= 1 << d;
-                    }
+        let overlap = board[*pair.0] & board[*pair.1];
+        let mut is_added = 0;
+        if pair.0.row == pair.1.row {
+            let mut others = 0;
+            for col in 0..SIZE {
+                if col != pair.0.col && col != pair.1.col {
+                    others |= board.get_cell_coords(pair.0.row, col).unwrap();
                 }
             }
-            for reg in get_regions_with_cells!(board, &[pair.0, pair.1]) {
-                let mut others = 0;
-                for cell in reg {
-                    if cell != pair.0 && cell != pair.1 {
-                        others |= board.get_cell(cell).unwrap();
-                    }
+            for d in 1..=SIZE {
+                if overlap & 1 << d > 0 && others & 1 << d == 0 {
+                    #[allow(clippy::cast_possible_truncation)]
+                    colouring.add_pair(*pair.0, *pair.1, d as u16);
+                    is_added |= 1 << d;
                 }
-                let overlap = a & b;
-                for d in 1..=SIZE {
-                    if is_added & 1 << d == 0 && overlap & 1 << d > 0 && others & 1 << d == 0 {
-                        #[allow(clippy::cast_possible_truncation)]
-                        colouring.add_pair(*pair.0, *pair.1, d as u16);
-                        is_added |= 1 << d;
-                    }
+            }
+        } else if pair.0.col == pair.1.col {
+            let mut others = 0;
+            for row in 0..SIZE {
+                if row != pair.0.row && row != pair.1.row {
+                    others |= board.get_cell_coords(row, pair.0.col).unwrap();
+                }
+            }
+            for d in 1..=SIZE {
+                if is_added & 1 << d == 0 && overlap & 1 << d > 0 && others & 1 << d == 0 {
+                    #[allow(clippy::cast_possible_truncation)]
+                    colouring.add_pair(*pair.0, *pair.1, d as u16);
+                    is_added |= 1 << d;
+                }
+            }
+        }
+        for reg in get_regions_with_cells!(board, &[pair.0, pair.1]) {
+            let mut others = 0;
+            for cell in reg {
+                if cell != pair.0 && cell != pair.1 {
+                    others |= board[*cell];
+                }
+            }
+            for d in 1..=SIZE {
+                if is_added & 1 << d == 0 && overlap & 1 << d > 0 && others & 1 << d == 0 {
+                    #[allow(clippy::cast_possible_truncation)]
+                    colouring.add_pair(*pair.0, *pair.1, d as u16);
+                    is_added |= 1 << d;
                 }
             }
         }
@@ -121,7 +116,7 @@ pub fn from_board(board: &Board) -> ColourMap {
         .iter()
         .flat_map(|c| {
             (0..9)
-                .filter(|v| is_set!(board.get_cell(c).unwrap(), v))
+                .filter(|v| is_set!(board[*c], v))
                 .map(move |v| (*c, v))
         })
         .filter(|(c, v)| {
