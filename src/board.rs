@@ -3,9 +3,9 @@ use std::ops::{Index, IndexMut};
 use crate::{
     colouring,
     defaults::{default_cell, default_regions},
-    groups, hiddens, intersections,
+    hiddens, intersections,
     misc::is_set,
-    xwings, ywings, SIZE,
+    nakeds, xwings, ywings, SIZE,
 };
 
 #[derive(Debug, Clone)]
@@ -14,7 +14,7 @@ pub struct Board {
     pub cells: [[u16; SIZE]; SIZE],
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Cell {
     pub row: usize,
     pub col: usize,
@@ -43,10 +43,16 @@ impl Board {
             if self.place_hidden_single() {
                 continue;
             }
-            if self.clean_groups() {
+            if self.clean_nakeds2() {
                 continue;
             }
-            if self.clean_hiddens() {
+            if self.clean_hiddens2() {
+                continue;
+            }
+            if self.clean_nakeds3() {
+                continue;
+            }
+            if self.clean_hiddens3() {
                 continue;
             }
             if option_env!("ASSUME_SOLUTION").is_some_and(|val| val == "T") && self.clean_bugs() {
@@ -59,6 +65,12 @@ impl Board {
                 continue;
             }
             if self.clean_intersections() {
+                continue;
+            }
+            if self.clean_nakeds4() {
+                continue;
+            }
+            if self.clean_hiddens4() {
                 continue;
             }
             if self.clean_xwings3() {
@@ -252,8 +264,8 @@ impl Board {
         digits
     }
 
-    pub fn clean_groups(&mut self) -> bool {
-        let groups = groups::from_board(self);
+    pub fn clean_nakeds2(&mut self) -> bool {
+        let groups = nakeds::from_board2(self);
 
         let mut has_changed = false;
         for group in groups.iter() {
@@ -279,11 +291,91 @@ impl Board {
         has_changed
     }
 
-    pub fn clean_hiddens(&mut self) -> bool {
+    pub fn clean_nakeds3(&mut self) -> bool {
+        let groups = nakeds::from_board3(self);
+
+        let mut has_changed = false;
+        for group in groups.iter() {
+            for val in (1..=SIZE).filter_map(|d| {
+                if is_set!(group.vals, d) {
+                    #[allow(clippy::cast_possible_truncation)]
+                    Some(d as u16)
+                } else {
+                    None
+                }
+            }) {
+                if group.relation.row {
+                    has_changed = self.clean_row(group.cells[0].row, &group.cells.iter().map(|cell| cell.col).collect::<Box<[_]>>()[..], val) || has_changed;
+                } else if group.relation.col {
+                    has_changed = self.clean_col(group.cells[0].col, &group.cells.iter().map(|cell| cell.row).collect::<Box<[_]>>()[..], val) || has_changed;
+                }
+                if group.relation.reg {
+                    has_changed = self.clean_reg(group.cells[0], &group.cells, val) || has_changed;
+                }
+            }
+        }
+
+        has_changed
+    }
+
+    pub fn clean_nakeds4(&mut self) -> bool {
+        let groups = nakeds::from_board4(self);
+
+        let mut has_changed = false;
+        for group in groups.iter() {
+            for val in (1..=SIZE).filter_map(|d| {
+                if is_set!(group.vals, d) {
+                    #[allow(clippy::cast_possible_truncation)]
+                    Some(d as u16)
+                } else {
+                    None
+                }
+            }) {
+                if group.relation.row {
+                    has_changed = self.clean_row(group.cells[0].row, &group.cells.iter().map(|cell| cell.col).collect::<Box<[_]>>()[..], val) || has_changed;
+                } else if group.relation.col {
+                    has_changed = self.clean_col(group.cells[0].col, &group.cells.iter().map(|cell| cell.row).collect::<Box<[_]>>()[..], val) || has_changed;
+                }
+                if group.relation.reg {
+                    has_changed = self.clean_reg(group.cells[0], &group.cells, val) || has_changed;
+                }
+            }
+        }
+
+        has_changed
+    }
+
+    pub fn clean_hiddens2(&mut self) -> bool {
         let mut has_changed = false;
         for group in hiddens::from_board2(self) {
             for cell in group.cells {
                 if !has_changed && self[cell].count_ones() > 2 {
+                    has_changed = true;
+                }
+                self[cell] &= group.vals;
+            }
+        }
+        has_changed
+    }
+
+    pub fn clean_hiddens3(&mut self) -> bool {
+        let mut has_changed = false;
+        for group in hiddens::from_board3(self) {
+            for cell in group.cells {
+                if !has_changed && self[cell].count_ones() > 3 {
+                    has_changed = true;
+                }
+                self[cell] &= group.vals;
+            }
+        }
+        has_changed
+    }
+
+    pub fn clean_hiddens4(&mut self) -> bool {
+        let mut has_changed = false;
+        for group in hiddens::from_board4(self) {
+            for cell in group.cells {
+                if !has_changed && self[cell].count_ones() > 4 {
                     has_changed = true;
                 }
                 self[cell] &= group.vals;

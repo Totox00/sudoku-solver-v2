@@ -9,9 +9,9 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct Group {
+pub struct Group<const S: usize> {
     pub relation: Relation,
-    pub cells: Vec<Cell>,
+    pub cells: [Cell; S],
     pub vals: u16,
 }
 
@@ -31,7 +31,7 @@ macro_rules! init_group {
 macro_rules! finish_group {
     ($iter:expr, $groups:ident, $board:ident, $size:expr) => {
         $iter
-            .flat_map(|(a, i)| $groups[i..].iter().map(move |b| a.clone() + b.clone()))
+            .flat_map(|(a, i)| $groups[i..].iter().map(move |b| a.add(b)))
             .filter(|group| group.vals.count_ones() <= $size)
             .map(|group| group.calc_relations($board))
             .filter(|group| group.relation.col || group.relation.row || group.relation.reg)
@@ -41,12 +41,12 @@ macro_rules! finish_group {
 macro_rules! expand_group {
     ($iter:expr, $groups:ident) => {
         $iter
-            .flat_map(|(a, i)| $groups[i..].iter().map(move |b| (a.clone() + b.clone(), i + 1)))
+            .flat_map(|(a, i)| $groups[i..].iter().map(move |b| (a.add(b), i + 1)))
             .filter(|(group, _)| group.vals.count_ones() <= 4)
     };
 }
 
-pub fn from_board(board: &Board) -> Rc<[Group]> {
+pub fn from_board2(board: &Board) -> Rc<[Group<2>]> {
     let groups: Vec<_> = cells()
         .iter()
         .filter_map(|cell| {
@@ -54,7 +54,7 @@ pub fn from_board(board: &Board) -> Rc<[Group]> {
             if vals.count_ones() > 1 {
                 Some(Group {
                     relation: Relation { row: true, col: true, reg: true },
-                    cells: vec![*cell],
+                    cells: [*cell],
                     vals,
                 })
             } else {
@@ -63,14 +63,52 @@ pub fn from_board(board: &Board) -> Rc<[Group]> {
         })
         .collect();
 
-    finish_group!(init_group!(groups), groups, board, 2)
-        .chain(finish_group!(expand_group!(init_group!(groups), groups), groups, board, 3))
-        .chain(finish_group!(expand_group!(expand_group!(init_group!(groups), groups), groups), groups, board, 4))
+    finish_group!(init_group!(groups), groups, board, 2).filter(Group::no_repeats).collect()
+}
+
+pub fn from_board3(board: &Board) -> Rc<[Group<3>]> {
+    let groups: Vec<_> = cells()
+        .iter()
+        .filter_map(|cell| {
+            let vals = board[*cell];
+            if vals.count_ones() > 1 {
+                Some(Group {
+                    relation: Relation { row: true, col: true, reg: true },
+                    cells: [*cell],
+                    vals,
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    finish_group!(expand_group!(init_group!(groups), groups), groups, board, 3).filter(Group::no_repeats).collect()
+}
+
+pub fn from_board4(board: &Board) -> Rc<[Group<4>]> {
+    let groups: Vec<_> = cells()
+        .iter()
+        .filter_map(|cell| {
+            let vals = board[*cell];
+            if vals.count_ones() > 1 {
+                Some(Group {
+                    relation: Relation { row: true, col: true, reg: true },
+                    cells: [*cell],
+                    vals,
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    finish_group!(expand_group!(expand_group!(init_group!(groups), groups), groups), groups, board, 4)
         .filter(Group::no_repeats)
         .collect()
 }
 
-impl Group {
+impl<const S: usize> Group<{ S }> {
     pub fn calc_relations(self, board: &Board) -> Self {
         let mut regs = get_regions_with_cells!(board, self.cells);
         Self {
@@ -87,25 +125,17 @@ impl Group {
     pub fn no_repeats(&self) -> bool {
         self.cells.iter().zip(1..).all(|(c, i)| !self.cells[i..].contains(c))
     }
-}
 
-impl Add for Group {
-    type Output = Self;
+    fn add(&self, rhs: &Group<1>) -> Group<{ S + 1 }> {
+        let mut cells = [Cell::default(); S + 1];
+        cells[..S].copy_from_slice(&self.cells);
+        cells[S..].copy_from_slice(&rhs.cells);
 
-    fn add(self, rhs: Self) -> Self::Output {
         Group {
             relation: self.relation + rhs.relation,
-            cells: [self.cells, rhs.cells].concat(),
+            cells,
             vals: self.vals | rhs.vals,
         }
-    }
-}
-
-impl AddAssign for Group {
-    fn add_assign(&mut self, rhs: Self) {
-        self.relation += rhs.relation;
-        self.cells.extend(rhs.cells);
-        self.vals |= rhs.vals;
     }
 }
 

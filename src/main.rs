@@ -1,3 +1,6 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
 use std::{env::args, fs::read_to_string, io, path::Path, time::Instant};
 
 use crate::{
@@ -9,7 +12,7 @@ mod board;
 mod colouring;
 mod defaults;
 mod format;
-mod groups;
+mod nakeds;
 mod hiddens;
 mod intersections;
 mod misc;
