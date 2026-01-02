@@ -28,12 +28,7 @@ macro_rules! get_values {
         $xwing
             .rows
             .iter()
-            .flat_map(|row| {
-                $xwing.cols.iter().map(|col| Cell {
-                    row: *row,
-                    col: *col,
-                })
-            })
+            .flat_map(|row| $xwing.cols.iter().map(|col| Cell { row: *row, col: *col }))
             .map(|cell| $board[cell])
             .collect::<Rc<[_]>>()
     };
@@ -43,27 +38,24 @@ macro_rules! is_valid {
     ($board:ident, $xwing:ident) => {
         if $xwing.clear_rows {
             (0..SIZE).all(|row| {
-                $xwing.cols.iter().all(|col| {
-                    $xwing.rows.contains(&row)
-                        || !is_set!($board.get_cell_coords(row, *col).unwrap(), $xwing.val)
-                })
+                $xwing
+                    .cols
+                    .iter()
+                    .all(|col| $xwing.rows.contains(&row) || !is_set!($board.get_cell_coords(row, *col).unwrap(), $xwing.val))
             })
         } else {
             (0..SIZE).all(|col| {
-                $xwing.rows.iter().all(|row| {
-                    $xwing.cols.contains(&col)
-                        || !is_set!($board.get_cell_coords(*row, col).unwrap(), $xwing.val)
-                })
+                $xwing
+                    .rows
+                    .iter()
+                    .all(|row| $xwing.cols.contains(&col) || !is_set!($board.get_cell_coords(*row, col).unwrap(), $xwing.val))
             })
         }
     };
 }
 
 pub fn from_board2(board: &Board) -> Rc<[XWing2]> {
-    let pairs: Vec<_> = (0..SIZE)
-        .zip(1..)
-        .flat_map(|(a, i)| (i..SIZE).map(move |b| [a, b]))
-        .collect();
+    let pairs: Vec<_> = (0..SIZE).zip(1..).flat_map(|(a, i)| (i..SIZE).map(move |b| [a, b])).collect();
 
     pairs[..]
         .iter()
@@ -101,11 +93,7 @@ pub fn from_board2(board: &Board) -> Rc<[XWing2]> {
 pub fn from_board3(board: &Board) -> Rc<[XWing3]> {
     let unit_groups: Vec<_> = (0..SIZE)
         .zip(1..)
-        .flat_map(|(a, i)| {
-            (i..SIZE)
-                .zip((i + 1)..)
-                .flat_map(move |(b, j)| (j..SIZE).map(move |c| [a, b, c]))
-        })
+        .flat_map(|(a, i)| (i..SIZE).zip((i + 1)..).flat_map(move |(b, j)| (j..SIZE).map(move |c| [a, b, c])))
         .collect();
 
     unit_groups[..]

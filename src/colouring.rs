@@ -44,11 +44,7 @@ pub fn from_board(board: &Board) -> ColourMap {
         }
     }
 
-    for pair in cells
-        .iter()
-        .zip(1..)
-        .flat_map(|(a, i)| cells[i..].iter().map(move |b| (a, b)))
-    {
+    for pair in cells.iter().zip(1..).flat_map(|(a, i)| cells[i..].iter().map(move |b| (a, b))) {
         let overlap = board[*pair.0] & board[*pair.1];
         let mut is_added = 0;
         if pair.0.row == pair.1.row {
@@ -104,27 +100,18 @@ pub fn from_board(board: &Board) -> ColourMap {
 
     let mut placed = vec![];
     for cell in &possible[0] {
-        if possible[1..]
-            .iter()
-            .all(|placement| placement.contains(cell))
-        {
+        if possible[1..].iter().all(|placement| placement.contains(cell)) {
             placed.push(*cell);
         }
     }
 
     let eliminated: Vec<_> = cells
         .iter()
-        .flat_map(|c| {
-            (0..9)
-                .filter(|v| is_set!(board[*c], v))
-                .map(move |v| (*c, v))
-        })
+        .flat_map(|c| (0..9).filter(|v| is_set!(board[*c], v)).map(move |v| (*c, v)))
         .filter(|(c, v)| {
-            possible.iter().all(|possibility| {
-                possibility.iter().any(|(other_c, other_v)| {
-                    c != other_c && v == other_v && c.can_see(board, other_c)
-                })
-            })
+            possible
+                .iter()
+                .all(|possibility| possibility.iter().any(|(other_c, other_v)| c != other_c && v == other_v && c.can_see(board, other_c)))
         })
         .collect();
 
@@ -133,10 +120,7 @@ pub fn from_board(board: &Board) -> ColourMap {
 
 impl Colouring<'_> {
     fn new(board: &Board) -> Colouring<'_> {
-        Colouring {
-            nodes: vec![],
-            board,
-        }
+        Colouring { nodes: vec![], board }
     }
 
     fn add_cell(&mut self, cell: Cell, possible: u16) {
@@ -178,10 +162,7 @@ impl Colouring<'_> {
 
         for i in 0..self.nodes.len() {
             let node = self.nodes.get_mut(i).unwrap();
-            if let Some(same_i) = new
-                .iter()
-                .position(|(_, n)| n.cell == node.cell && n.val == node.val)
-            {
+            if let Some(same_i) = new.iter().position(|(_, n)| n.cell == node.cell && n.val == node.val) {
                 let same = new.get_mut(same_i).unwrap();
 
                 same.1.connects_to.append(&mut node.connects_to);
@@ -196,12 +177,7 @@ impl Colouring<'_> {
             let new_connections: Vec<_> = node
                 .connects_to
                 .iter()
-                .map(|(i, connection)| {
-                    (
-                        new.iter().position(|(old_i, _)| old_i.contains(i)).unwrap(),
-                        *connection,
-                    )
-                })
+                .map(|(i, connection)| (new.iter().position(|(old_i, _)| old_i.contains(i)).unwrap(), *connection))
                 .collect();
 
             self.nodes.push(ColourNode {
@@ -214,15 +190,10 @@ impl Colouring<'_> {
     }
 
     fn connect(&mut self) {
-        let pairs: Vec<_> = (0..self.nodes.len())
-            .zip(1..)
-            .flat_map(|(a, i)| (i..self.nodes.len()).map(move |b| (a, b)))
-            .collect();
+        let pairs: Vec<_> = (0..self.nodes.len()).zip(1..).flat_map(|(a, i)| (i..self.nodes.len()).map(move |b| (a, b))).collect();
         for (i1, i2) in pairs {
             if let Some((n1, n2)) = get_mut_pair(&mut self.nodes, (i1, i2)) {
-                if (n1.cell == n2.cell)
-                    || (n1.val == n2.val && n1.cell.can_see(self.board, &n2.cell))
-                {
+                if (n1.cell == n2.cell) || (n1.val == n2.val && n1.cell.can_see(self.board, &n2.cell)) {
                     n1.connects_to.push((i2, false));
                     n2.connects_to.push((i1, false));
                 }
@@ -280,11 +251,7 @@ impl Colouring<'_> {
 
     fn placed_digits(&self) -> Vec<(Cell, u16)> {
         #[allow(clippy::cast_possible_truncation)]
-        self.nodes
-            .iter()
-            .filter(|n| n.state == State::True)
-            .map(|n| (n.cell, n.val))
-            .collect()
+        self.nodes.iter().filter(|n| n.state == State::True).map(|n| (n.cell, n.val)).collect()
     }
 }
 
@@ -302,10 +269,6 @@ fn get_mut_pair<T>(slice: &mut [T], index: (usize, usize)) -> Option<(&mut T, &m
         let (_, tmp) = slice.split_at_mut(first);
         let (x, rest) = tmp.split_at_mut(1);
         let (_, y) = rest.split_at_mut(second - first - 1);
-        Some(if index.0 < index.1 {
-            (&mut x[0], &mut y[0])
-        } else {
-            (&mut y[0], &mut x[0])
-        })
+        Some(if index.0 < index.1 { (&mut x[0], &mut y[0]) } else { (&mut y[0], &mut x[0]) })
     }
 }

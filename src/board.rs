@@ -1,12 +1,9 @@
-use std::{
-    ops::{Index, IndexMut},
-    rc::Rc,
-};
+use std::ops::{Index, IndexMut};
 
 use crate::{
     colouring,
     defaults::{default_cell, default_regions},
-    groups, intersections,
+    groups, hiddens, intersections,
     misc::is_set,
     xwings, ywings, SIZE,
 };
@@ -28,21 +25,13 @@ type Anyhow = Option<()>;
 
 macro_rules! get_regions_with_cell {
     ($board:ident, $cell:expr) => {
-        $board
-            .regions
-            .iter()
-            .filter(|region| region.contains($cell))
+        $board.regions.iter().filter(|region| region.contains($cell))
     };
 }
 
-pub(crate) use get_regions_with_cell;
-
 macro_rules! get_regions_with_cells {
     ($board:ident, $cells:expr) => {
-        $board
-            .regions
-            .iter()
-            .filter(|region| $cells.iter().all(|cell| region.contains(cell)))
+        $board.regions.iter().filter(|region| $cells.iter().all(|cell| region.contains(cell)))
     };
 }
 
@@ -50,13 +39,37 @@ pub(crate) use get_regions_with_cells;
 
 impl Board {
     pub fn solve(&mut self) {
-        self.place_hidden_single();
-        self.clean_groups();
-        self.clean_xwings2();
-        self.clean_ywings();
-        self.clean_intersections();
-        self.clean_xwings3();
-        self.clean_colouring();
+        loop {
+            if self.place_hidden_single() {
+                continue;
+            }
+            if self.clean_groups() {
+                continue;
+            }
+            if self.clean_hiddens() {
+                continue;
+            }
+            if option_env!("ASSUME_SOLUTION").is_some_and(|val| val == "T") && self.clean_bugs() {
+                continue;
+            }
+            if self.clean_xwings2() {
+                continue;
+            }
+            if self.clean_ywings() {
+                continue;
+            }
+            if self.clean_intersections() {
+                continue;
+            }
+            if self.clean_xwings3() {
+                continue;
+            }
+            if self.clean_colouring() {
+                continue;
+            }
+
+            break;
+        }
     }
 
     pub fn new_custom_regions(regions: Vec<Region>) -> Self {
@@ -71,6 +84,10 @@ impl Board {
             regions: default_regions(),
             cells: [[default_cell(); SIZE]; SIZE],
         }
+    }
+
+    pub fn is_solved(&self) -> bool {
+        self.cells.iter().all(|row| row.iter().all(|cell| cell.is_power_of_two()))
     }
 
     pub fn get_cell_coords(&self, row: usize, col: usize) -> Option<u16> {
@@ -95,7 +112,7 @@ impl Board {
             if ignore.contains(&i) {
                 continue;
             }
-            if let Some(true) = self.clean_cell(Cell { row, col: i }, val) {
+            if self.clean_cell(Cell { row, col: i }, val) {
                 has_changed = true;
             }
         }
@@ -108,7 +125,7 @@ impl Board {
             if ignore.contains(&i) {
                 continue;
             }
-            if let Some(true) = self.clean_cell(Cell { row: i, col }, val) {
+            if self.clean_cell(Cell { row: i, col }, val) {
                 has_changed = true;
             }
         }
@@ -126,7 +143,7 @@ impl Board {
                 if ignore.contains(&cell) {
                     continue;
                 }
-                if let Some(true) = self.clean_cell(cell, val) {
+                if self.clean_cell(cell, val) {
                     has_changed = true;
                 }
             }
@@ -134,7 +151,7 @@ impl Board {
         has_changed
     }
 
-    pub fn clean_cell(&mut self, cell: Cell, val: u16) -> Option<bool> {
+    pub fn clean_cell(&mut self, cell: Cell, val: u16) -> bool {
         let mut has_changed = false;
         let mut last_val = None;
         let cell_val = &mut self[cell];
@@ -143,27 +160,29 @@ impl Board {
             has_changed = true;
             *cell_val &= !(1 << val);
             #[allow(clippy::cast_possible_truncation)]
-            if cell_val.count_ones() == 1 {
+            if cell_val.is_power_of_two() {
                 last_val = Some(cell_val.trailing_zeros() as u16);
             }
         }
         if let Some(new_val) = last_val {
             self.place_digit(new_val, cell);
         }
-        Some(has_changed)
+        has_changed
     }
 
-    pub fn place_hidden_single(&mut self) {
+    pub fn place_hidden_single(&mut self) -> bool {
         let size = SIZE;
         for cell in (0..size).flat_map(|row| (0..size).map(move |col| Cell { row, col })) {
             if self.place_if_hidden_single(cell).is_some() {
-                return self.solve();
+                return true;
             }
         }
+
+        false
     }
 
     pub fn place_if_hidden_single(&mut self, cell: Cell) -> Anyhow {
-        if self[cell].count_ones() == 1 {
+        if self[cell].is_power_of_two() {
             return None;
         }
         let single = {
@@ -174,14 +193,12 @@ impl Board {
                 possible
             } else {
                 let in_col = self.get_col_nums(cell.col, &[cell.row])?;
-                let possible =
-                    (0..SIZE).find(|val| is_set!(cell_val, val) && !is_set!(in_col, val));
+                let possible = (0..SIZE).find(|val| is_set!(cell_val, val) && !is_set!(in_col, val));
                 if possible.is_some() {
                     possible
                 } else {
-                    let in_reg = self.get_reg_nums(cell, &[cell])?;
-                    let possible =
-                        (0..SIZE).find(|val| is_set!(cell_val, val) && !is_set!(in_reg, val));
+                    let in_reg = self.get_reg_nums(cell, &[cell]);
+                    let possible = (0..SIZE).find(|val| is_set!(cell_val, val) && !is_set!(in_reg, val));
                     if possible.is_some() {
                         possible
                     } else {
@@ -221,7 +238,7 @@ impl Board {
         Some(digits)
     }
 
-    pub fn get_reg_nums(&self, cell: Cell, ignore: &[Cell]) -> Option<u16> {
+    pub fn get_reg_nums(&self, cell: Cell, ignore: &[Cell]) -> u16 {
         let mut digits = 0;
         for region in get_regions_with_cell!(self, &cell) {
             for cell in region {
@@ -232,15 +249,15 @@ impl Board {
             }
         }
 
-        Some(digits)
+        digits
     }
 
-    pub fn clean_groups(&mut self) {
+    pub fn clean_groups(&mut self) -> bool {
         let groups = groups::from_board(self);
 
         let mut has_changed = false;
         for group in groups.iter() {
-            for val in (0..=SIZE).filter_map(|d| {
+            for val in (1..=SIZE).filter_map(|d| {
                 if is_set!(group.vals, d) {
                     #[allow(clippy::cast_possible_truncation)]
                     Some(d as u16)
@@ -249,17 +266,9 @@ impl Board {
                 }
             }) {
                 if group.relation.row {
-                    has_changed = self.clean_row(
-                        group.cells[0].row,
-                        &group.cells.iter().map(|cell| cell.col).collect::<Rc<[_]>>()[..],
-                        val,
-                    ) || has_changed;
+                    has_changed = self.clean_row(group.cells[0].row, &group.cells.iter().map(|cell| cell.col).collect::<Box<[_]>>()[..], val) || has_changed;
                 } else if group.relation.col {
-                    has_changed = self.clean_col(
-                        group.cells[0].col,
-                        &group.cells.iter().map(|cell| cell.row).collect::<Rc<[_]>>()[..],
-                        val,
-                    ) || has_changed;
+                    has_changed = self.clean_col(group.cells[0].col, &group.cells.iter().map(|cell| cell.row).collect::<Box<[_]>>()[..], val) || has_changed;
                 }
                 if group.relation.reg {
                     has_changed = self.clean_reg(group.cells[0], &group.cells, val) || has_changed;
@@ -267,12 +276,59 @@ impl Board {
             }
         }
 
-        if has_changed {
-            self.solve();
+        has_changed
+    }
+
+    pub fn clean_hiddens(&mut self) -> bool {
+        let mut has_changed = false;
+        for group in hiddens::from_board2(self) {
+            for cell in group.cells {
+                if !has_changed && self[cell].count_ones() > 2 {
+                    has_changed = true;
+                }
+                self[cell] &= group.vals;
+            }
+        }
+        has_changed
+    }
+
+    pub fn clean_bugs(&mut self) -> bool {
+        let mut bug_cell = None;
+
+        for row in 0..9 {
+            for col in 0..9 {
+                match self.cells[row][col].count_ones() {
+                    0..=2 => (),
+                    3 => {
+                        if bug_cell.is_some() {
+                            return false;
+                        }
+                        bug_cell = Some(Cell { row, col });
+                    }
+                    4.. => return false,
+                }
+            }
+        }
+
+        if let Some(cell) = bug_cell {
+            let digits = self[cell];
+            for digit in 1..=9 {
+                if digits & (1 << digit) > 0 {
+                    let mut occurances = 0;
+                    for cell in self.cells[cell.row] {
+                        occurances ^= cell;
+                    }
+                    #[allow(clippy::cast_possible_truncation)]
+                    self.place_digit(occurances.trailing_zeros() as u16, cell);
+                }
+            }
+            true
+        } else {
+            false
         }
     }
 
-    pub fn clean_xwings2(&mut self) {
+    pub fn clean_xwings2(&mut self) -> bool {
         let xwings = xwings::from_board2(self);
 
         let mut has_changed = false;
@@ -288,12 +344,10 @@ impl Board {
             }
         }
 
-        if has_changed {
-            self.solve();
-        }
+        has_changed
     }
 
-    pub fn clean_xwings3(&mut self) {
+    pub fn clean_xwings3(&mut self) -> bool {
         let xwings = xwings::from_board3(self);
 
         let mut has_changed = false;
@@ -309,45 +363,38 @@ impl Board {
             }
         }
 
-        if has_changed {
-            self.solve();
-        }
+        has_changed
     }
 
-    pub fn clean_ywings(&mut self) {
+    pub fn clean_ywings(&mut self) -> bool {
         let ywings = ywings::from_board(self);
 
         let mut has_changed = false;
         for ywing in ywings.iter() {
-            has_changed = self.clean_cell(ywing.target, ywing.val).unwrap_or(false) || has_changed;
+            has_changed = self.clean_cell(ywing.target, ywing.val) || has_changed;
         }
 
-        if has_changed {
-            self.solve();
-        }
+        has_changed
     }
 
-    pub fn clean_intersections(&mut self) {
+    pub fn clean_intersections(&mut self) -> bool {
         let intersections = intersections::from_board(self);
 
         let mut has_changed = false;
         for intersection in intersections.iter() {
             for cell in &intersection.cells {
-                has_changed =
-                    self.clean_cell(*cell, intersection.val).unwrap_or(false) || has_changed;
+                has_changed = self.clean_cell(*cell, intersection.val) || has_changed;
             }
         }
 
-        if has_changed {
-            self.solve();
-        }
+        has_changed
     }
 
-    pub fn clean_colouring(&mut self) {
+    pub fn clean_colouring(&mut self) -> bool {
         let colour_map = colouring::from_board(self);
 
         if colour_map.eliminated.is_empty() && colour_map.placed.is_empty() {
-            return;
+            return false;
         }
 
         for (cell, val) in colour_map.placed {
@@ -358,17 +405,13 @@ impl Board {
             self.clean_cell(cell, val);
         }
 
-        self.solve();
+        true
     }
 }
 
 impl Cell {
     pub fn can_see(&self, board: &Board, target: &Cell) -> bool {
-        self.row == target.row
-            || self.col == target.col
-            || get_regions_with_cells!(board, &[self, target])
-                .next()
-                .is_some()
+        self.row == target.row || self.col == target.col || get_regions_with_cells!(board, &[self, target]).next().is_some()
     }
 }
 

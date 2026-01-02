@@ -15,9 +15,7 @@ pub struct YWing {
 }
 
 pub fn from_board(board: &Board) -> Rc<[YWing]> {
-    let cells: Vec<_> = (0..SIZE)
-        .flat_map(|row| (0..SIZE).map(move |col| Cell { row, col }))
-        .collect();
+    let cells: Vec<_> = (0..SIZE).flat_map(|row| (0..SIZE).map(move |col| Cell { row, col })).collect();
 
     let useful_cells: Vec<_> = (0..SIZE)
         .flat_map(|row| {
@@ -33,12 +31,7 @@ pub fn from_board(board: &Board) -> Rc<[YWing]> {
                 }
             })
         })
-        .map(|group| {
-            group.unwrap_or(Cell {
-                row: SIZE,
-                col: SIZE,
-            })
-        })
+        .map(|group| group.unwrap_or(Cell { row: SIZE, col: SIZE }))
         .filter(|cell| cell.row != SIZE)
         .collect();
 
@@ -69,9 +62,7 @@ pub fn from_board(board: &Board) -> Rc<[YWing]> {
         .flat_map(|ywing| {
             cells
                 .iter()
-                .filter(move |cell| {
-                    **cell != ywing.target && **cell != ywing.foci.0 && **cell != ywing.foci.1
-                })
+                .filter(move |cell| **cell != ywing.target && **cell != ywing.foci.0 && **cell != ywing.foci.1)
                 .map(move |cell| YWing {
                     origin: ywing.origin,
                     foci: ywing.foci,
@@ -80,8 +71,6 @@ pub fn from_board(board: &Board) -> Rc<[YWing]> {
                 })
         })
         .filter(|ywing| is_set!(board[ywing.target], ywing.val))
-        .filter(|ywing| {
-            ywing.foci.0.can_see(board, &ywing.target) && ywing.foci.1.can_see(board, &ywing.target)
-        })
+        .filter(|ywing| ywing.foci.0.can_see(board, &ywing.target) && ywing.foci.1.can_see(board, &ywing.target))
         .collect()
 }

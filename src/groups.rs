@@ -41,11 +41,7 @@ macro_rules! finish_group {
 macro_rules! expand_group {
     ($iter:expr, $groups:ident) => {
         $iter
-            .flat_map(|(a, i)| {
-                $groups[i..]
-                    .iter()
-                    .map(move |b| (a.clone() + b.clone(), i + 1))
-            })
+            .flat_map(|(a, i)| $groups[i..].iter().map(move |b| (a.clone() + b.clone(), i + 1)))
             .filter(|(group, _)| group.vals.count_ones() <= 4)
     };
 }
@@ -57,11 +53,7 @@ pub fn from_board(board: &Board) -> Rc<[Group]> {
             let vals = board[*cell];
             if vals.count_ones() > 1 {
                 Some(Group {
-                    relation: Relation {
-                        row: true,
-                        col: true,
-                        reg: true,
-                    },
+                    relation: Relation { row: true, col: true, reg: true },
                     cells: vec![*cell],
                     vals,
                 })
@@ -72,18 +64,8 @@ pub fn from_board(board: &Board) -> Rc<[Group]> {
         .collect();
 
     finish_group!(init_group!(groups), groups, board, 2)
-        .chain(finish_group!(
-            expand_group!(init_group!(groups), groups),
-            groups,
-            board,
-            3
-        ))
-        .chain(finish_group!(
-            expand_group!(expand_group!(init_group!(groups), groups), groups),
-            groups,
-            board,
-            4
-        ))
+        .chain(finish_group!(expand_group!(init_group!(groups), groups), groups, board, 3))
+        .chain(finish_group!(expand_group!(expand_group!(init_group!(groups), groups), groups), groups, board, 4))
         .filter(Group::no_repeats)
         .collect()
 }
@@ -93,16 +75,8 @@ impl Group {
         let mut regs = get_regions_with_cells!(board, self.cells);
         Self {
             relation: Relation {
-                row: self
-                    .cells
-                    .iter()
-                    .map(|cell| cell.row)
-                    .all(|row| row == self.cells[0].row),
-                col: self
-                    .cells
-                    .iter()
-                    .map(|cell| cell.col)
-                    .all(|col| col == self.cells[0].col),
+                row: self.cells.iter().map(|cell| cell.row).all(|row| row == self.cells[0].row),
+                col: self.cells.iter().map(|cell| cell.col).all(|col| col == self.cells[0].col),
                 reg: regs.next().is_some(),
             },
             cells: self.cells,
@@ -111,10 +85,7 @@ impl Group {
     }
 
     pub fn no_repeats(&self) -> bool {
-        self.cells
-            .iter()
-            .zip(1..)
-            .all(|(c, i)| !self.cells[i..].contains(c))
+        self.cells.iter().zip(1..).all(|(c, i)| !self.cells[i..].contains(c))
     }
 }
 
@@ -124,7 +95,7 @@ impl Add for Group {
     fn add(self, rhs: Self) -> Self::Output {
         Group {
             relation: self.relation + rhs.relation,
-            cells: vec![self.cells, rhs.cells].concat(),
+            cells: [self.cells, rhs.cells].concat(),
             vals: self.vals | rhs.vals,
         }
     }

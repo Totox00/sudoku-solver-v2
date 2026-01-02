@@ -12,20 +12,12 @@ pub enum Unit<'a> {
     Reg(&'a Region),
 }
 
-pub fn units(board: &Board) -> Rc<[Unit]> {
-    board
-        .regions
-        .iter()
-        .map(Unit::Reg)
-        .chain((0..SIZE).map(Unit::Row))
-        .chain((0..SIZE).map(Unit::Col))
-        .collect()
+pub fn units(board: &'_ Board) -> Rc<[Unit<'_>]> {
+    board.regions.iter().map(Unit::Reg).chain((0..SIZE).map(Unit::Row)).chain((0..SIZE).map(Unit::Col)).collect()
 }
 
 pub fn cells() -> Rc<[Cell]> {
-    (0..SIZE)
-        .flat_map(|row| (0..SIZE).map(move |col| Cell { row, col }))
-        .collect()
+    (0..SIZE).flat_map(|row| (0..SIZE).map(move |col| Cell { row, col })).collect()
 }
 
 macro_rules! is_set {

@@ -1,0 +1,42 @@
+Hidden Singles
+Naked Pairs
+Naked Triples
+Naked Quads
+Hidden Pairs
+Hidden Triples
+Hidden Quads
+Pointing Pairs
+Box/Line Reduction
+X-Wing
+Simple Colouring
+Y-Wing
+Rectangle Elimination
+Empty Rectangles
+Swordfish
+XYZ-Wing
+BUG
+X-Cycles
+XY-Chain
+3D Medusa
+Jellyfish
+Unique Rectangles
+Fireworks
+SK Loops
+Extended Unique Rectangles
+Hidden Unique Rectangles
+WXYZ Wing
+Aligned Pair Exclusion
+Exocet
+Grouped X-Cycles
+Finned X-Wing
+Finned Swordfish
+Alternating Inference Chains
+Sue-de-Cog
+Digit Forcing Chains
+Nishio Forcing Chains
+Cell Forcing Chains
+Unit Forcing Chains
+Almost Locked Sets
+Death Blossom
+Pattern Overlay Method
+Quad Forcing Chains

@@ -23,32 +23,15 @@ pub fn default_regions() -> Vec<Region> {
 }
 
 fn calc_region(width: usize, height: usize) -> Vec<Region> {
-    calc_region_offsets(height, width)
-        .iter()
-        .map(|(x, y)| calc_region_contents(width, height, *x, *y))
-        .collect()
+    calc_region_offsets(height, width).iter().map(|(x, y)| calc_region_contents(width, height, *x, *y)).collect()
 }
 
 fn calc_region_offsets(width: usize, height: usize) -> Vec<(usize, usize)> {
-    (0..width)
-        .flat_map(|x| (0..height).map(move |y| (x * height, y * width)))
-        .collect()
+    (0..width).flat_map(|x| (0..height).map(move |y| (x * height, y * width))).collect()
 }
 
-fn calc_region_contents(
-    width: usize,
-    height: usize,
-    offset_x: usize,
-    offset_y: usize,
-) -> Vec<Cell> {
-    (0..width)
-        .flat_map(|x| {
-            (0..height).map(move |y| Cell {
-                col: x + offset_x,
-                row: y + offset_y,
-            })
-        })
-        .collect()
+fn calc_region_contents(width: usize, height: usize, offset_x: usize, offset_y: usize) -> Vec<Cell> {
+    (0..width).flat_map(|x| (0..height).map(move |y| Cell { col: x + offset_x, row: y + offset_y })).collect()
 }
 
 pub fn default_region_bounds() -> (usize, usize) {

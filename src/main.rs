@@ -10,6 +10,7 @@ mod colouring;
 mod defaults;
 mod format;
 mod groups;
+mod hiddens;
 mod intersections;
 mod misc;
 mod xwings;
@@ -18,30 +19,22 @@ mod ywings;
 const SIZE: usize = 9;
 
 fn main() {
-    for mut board in read_puzzle_file(Path::new(
-        args()
-            .nth(1)
-            .expect("Must pass at least one argument")
-            .as_str(),
-    ))
-    .expect("Error reading puzzle file")
-    {
+    for mut board in read_puzzle_file(Path::new(args().nth(1).expect("Must pass at least one argument").as_str())).expect("Error reading puzzle file") {
         let start = Instant::now();
         board.solve();
         let elapsed = start.elapsed();
         println!("{}", format(&board).unwrap());
         println!("Elapsed time: {elapsed:?}");
+        if !board.is_solved() {
+            break;
+        }
     }
 }
 
 fn read_puzzle_file(path: &Path) -> io::Result<Vec<Board>> {
     let raw = read_to_string(path)?;
 
-    let data = if let Some(data) = raw.split_once("END") {
-        data.0
-    } else {
-        &raw
-    };
+    let data = if let Some(data) = raw.split_once("END") { data.0 } else { &raw };
 
     Ok(data
         .trim()
@@ -51,11 +44,7 @@ fn read_puzzle_file(path: &Path) -> io::Result<Vec<Board>> {
             let mut board = Board::new();
 
             for (line, row) in lines.iter().zip(0..) {
-                for (val, col) in line
-                    .chars()
-                    .zip(0..)
-                    .filter_map(|(chr, col)| chr.to_digit(16).map(|d| (d, col)))
-                {
+                for (val, col) in line.chars().zip(0..).filter_map(|(chr, col)| chr.to_digit(16).map(|d| (d, col))) {
                     #[allow(clippy::cast_possible_truncation)]
                     board.place_digit(val as u16, Cell { row, col });
                 }
