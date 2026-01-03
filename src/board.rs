@@ -55,9 +55,6 @@ impl Board {
             if self.clean_hiddens3() {
                 continue;
             }
-            if option_env!("ASSUME_SOLUTION").is_some_and(|val| val == "T") && self.clean_bugs() {
-                continue;
-            }
             if self.clean_xwings2() {
                 continue;
             }
@@ -77,6 +74,9 @@ impl Board {
                 continue;
             }
             if self.clean_colouring() {
+                continue;
+            }
+            if self.clean_xwings4() {
                 continue;
             }
 
@@ -111,6 +111,9 @@ impl Board {
     }
 
     pub fn place_digit(&mut self, val: u16, cell: Cell) {
+        if self[cell] & (1 << val) == 0 {
+            panic!("Attempted to place digit in cell where it is not a candidate")
+        }
         self[cell] = 1 << val;
 
         self.clean_col(cell.col, &[cell.row], val);
@@ -384,42 +387,6 @@ impl Board {
         has_changed
     }
 
-    pub fn clean_bugs(&mut self) -> bool {
-        let mut bug_cell = None;
-
-        for row in 0..9 {
-            for col in 0..9 {
-                match self.cells[row][col].count_ones() {
-                    0..=2 => (),
-                    3 => {
-                        if bug_cell.is_some() {
-                            return false;
-                        }
-                        bug_cell = Some(Cell { row, col });
-                    }
-                    4.. => return false,
-                }
-            }
-        }
-
-        if let Some(cell) = bug_cell {
-            let digits = self[cell];
-            for digit in 1..=9 {
-                if digits & (1 << digit) > 0 {
-                    let mut occurances = 0;
-                    for cell in self.cells[cell.row] {
-                        occurances ^= cell;
-                    }
-                    #[allow(clippy::cast_possible_truncation)]
-                    self.place_digit(occurances.trailing_zeros() as u16, cell);
-                }
-            }
-            true
-        } else {
-            false
-        }
-    }
-
     pub fn clean_xwings2(&mut self) -> bool {
         let xwings = xwings::from_board2(self);
 
@@ -441,6 +408,25 @@ impl Board {
 
     pub fn clean_xwings3(&mut self) -> bool {
         let xwings = xwings::from_board3(self);
+
+        let mut has_changed = false;
+        for xwing in xwings.iter() {
+            if xwing.clear_rows {
+                for row in xwing.rows {
+                    has_changed = self.clean_row(row, &xwing.cols, xwing.val) || has_changed;
+                }
+            } else {
+                for col in xwing.cols {
+                    has_changed = self.clean_col(col, &xwing.rows, xwing.val) || has_changed;
+                }
+            }
+        }
+
+        has_changed
+    }
+
+    pub fn clean_xwings4(&mut self) -> bool {
+        let xwings = xwings::from_board4(self);
 
         let mut has_changed = false;
         for xwing in xwings.iter() {

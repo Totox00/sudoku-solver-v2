@@ -8,18 +8,10 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub struct XWing2 {
+pub struct XWing<const S: usize> {
     pub clear_rows: bool,
-    pub rows: [usize; 2],
-    pub cols: [usize; 2],
-    pub val: u16,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct XWing3 {
-    pub clear_rows: bool,
-    pub rows: [usize; 3],
-    pub cols: [usize; 3],
+    pub rows: [usize; S],
+    pub cols: [usize; S],
     pub val: u16,
 }
 
@@ -54,14 +46,14 @@ macro_rules! is_valid {
     };
 }
 
-pub fn from_board2(board: &Board) -> Rc<[XWing2]> {
-    let pairs: Vec<_> = (0..SIZE).zip(1..).flat_map(|(a, i)| (i..SIZE).map(move |b| [a, b])).collect();
+pub fn from_board2(board: &Board) -> Rc<[XWing<2>]> {
+    let pairs: Vec<_> = (0..(SIZE - 1)).flat_map(|a| ((a + 1)..SIZE).map(move |b| [a, b])).collect();
 
     pairs[..]
         .iter()
         .flat_map(|a| pairs[..].iter().map(move |b| (a, b)))
         .flat_map(|(rows, cols)| {
-            [true, false].iter().map(|clear_rows| XWing2 {
+            [true, false].iter().map(|clear_rows| XWing {
                 clear_rows: *clear_rows,
                 rows: *rows,
                 cols: *cols,
@@ -75,7 +67,7 @@ pub fn from_board2(board: &Board) -> Rc<[XWing2]> {
             (1..=SIZE).filter_map(move |d| {
                 if is_set!(v, d) {
                     #[allow(clippy::cast_possible_truncation)]
-                    Some(XWing2 {
+                    Some(XWing {
                         clear_rows: xwing.clear_rows,
                         rows: xwing.rows,
                         cols: xwing.cols,
@@ -90,17 +82,14 @@ pub fn from_board2(board: &Board) -> Rc<[XWing2]> {
         .collect()
 }
 
-pub fn from_board3(board: &Board) -> Rc<[XWing3]> {
-    let unit_groups: Vec<_> = (0..SIZE)
-        .zip(1..)
-        .flat_map(|(a, i)| (i..SIZE).zip((i + 1)..).flat_map(move |(b, j)| (j..SIZE).map(move |c| [a, b, c])))
-        .collect();
+pub fn from_board3(board: &Board) -> Rc<[XWing<3>]> {
+    let unit_groups: Vec<_> = (0..(SIZE - 2)).flat_map(|a| ((a + 1)..(SIZE - 1)).flat_map(move |b| ((b + 1)..SIZE).map(move |c| [a, b, c]))).collect();
 
     unit_groups[..]
         .iter()
         .flat_map(|a| unit_groups[..].iter().map(move |b| (a, b)))
         .flat_map(|(rows, cols)| {
-            [true, false].iter().map(|clear_rows| XWing3 {
+            [true, false].iter().map(|clear_rows| XWing {
                 clear_rows: *clear_rows,
                 rows: *rows,
                 cols: *cols,
@@ -110,7 +99,38 @@ pub fn from_board3(board: &Board) -> Rc<[XWing3]> {
         .flat_map(|xwing| {
             (1..=SIZE).map(move |d| {
                 #[allow(clippy::cast_possible_truncation)]
-                XWing3 {
+                XWing {
+                    clear_rows: xwing.clear_rows,
+                    rows: xwing.rows,
+                    cols: xwing.cols,
+                    val: d as u16,
+                }
+            })
+        })
+        .filter(|xwing| is_valid!(board, xwing))
+        .collect()
+}
+
+pub fn from_board4(board: &Board) -> Rc<[XWing<4>]> {
+    let unit_groups: Vec<_> = (0..(SIZE - 3))
+        .flat_map(|a| ((a + 1)..(SIZE - 2)).flat_map(move |b| ((b + 1)..(SIZE - 1)).flat_map(move |c| ((c + 1)..SIZE).map(move |d| [a, b, c, d]))))
+        .collect();
+
+    unit_groups[..]
+        .iter()
+        .flat_map(|a| unit_groups[..].iter().map(move |b| (a, b)))
+        .flat_map(|(rows, cols)| {
+            [true, false].iter().map(|clear_rows| XWing {
+                clear_rows: *clear_rows,
+                rows: *rows,
+                cols: *cols,
+                val: 0,
+            })
+        })
+        .flat_map(|xwing| {
+            (1..=SIZE).map(move |d| {
+                #[allow(clippy::cast_possible_truncation)]
+                XWing {
                     clear_rows: xwing.clear_rows,
                     rows: xwing.rows,
                     cols: xwing.cols,
