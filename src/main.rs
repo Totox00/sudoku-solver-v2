@@ -12,10 +12,11 @@ mod board;
 mod colouring;
 mod defaults;
 mod format;
-mod nakeds;
 mod hiddens;
 mod intersections;
 mod misc;
+mod nakeds;
+mod rectangles;
 mod xwings;
 mod ywings;
 

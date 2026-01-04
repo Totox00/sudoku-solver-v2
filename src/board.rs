@@ -1,11 +1,14 @@
-use std::ops::{Index, IndexMut};
+use std::{
+    fmt::Display,
+    ops::{Index, IndexMut},
+};
 
 use crate::{
     colouring,
     defaults::{default_cell, default_regions},
-    hiddens, intersections,
+    format, hiddens, intersections,
     misc::is_set,
-    nakeds, xwings, ywings, SIZE,
+    nakeds, rectangles, xwings, ywings, SIZE,
 };
 
 #[derive(Debug, Clone)]
@@ -59,6 +62,9 @@ impl Board {
                 continue;
             }
             if self.clean_ywings() {
+                continue;
+            }
+            if self.clean_rectangles() {
                 continue;
             }
             if self.clean_intersections() {
@@ -170,7 +176,7 @@ impl Board {
         let mut has_changed = false;
         let mut last_val = None;
         let cell_val = &mut self[cell];
-        assert!(*cell_val != 1 << val, "Cell has no possibilities");
+        assert!(*cell_val != 1 << val, "Cell {cell} has no possibilities");
         if is_set!(*cell_val, val) {
             has_changed = true;
             *cell_val &= !(1 << val);
@@ -468,6 +474,18 @@ impl Board {
         has_changed
     }
 
+    pub fn clean_rectangles(&mut self) -> bool {
+        if let Some((cells, val)) = rectangles::from_board(self) {
+            for cell in cells {
+                self.clean_cell(cell, val);
+            }
+
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn clean_colouring(&mut self) -> bool {
         let colour_map = colouring::from_board(self);
 
@@ -504,5 +522,11 @@ impl Index<Cell> for Board {
 impl IndexMut<Cell> for Board {
     fn index_mut(&mut self, index: Cell) -> &mut Self::Output {
         &mut self.cells[index.row][index.col]
+    }
+}
+
+impl Display for Cell {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.col, self.row)
     }
 }
